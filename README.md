@@ -12,8 +12,8 @@ This project builds a TFile like object that uses MPICH (Message Passing Interfa
 (http://www.mpich.org/) for download and installation instructions
 
 # INSTALLATION
-The following instruction assumes the user has already build/installed
-ROOT and CERN in the machine.
+The following instructions assume the user has already build/installed
+ROOT and MPICH in the machine.
 1. Create a new working directory for the project (workdir)
 
 2. In the workdir, open the "setenv.sh" file.
@@ -29,7 +29,7 @@ ROOT and CERN in the machine.
 7. In the workdir, do "make".
 
 # USAGE EXAMPLE
-An example code (./src/test_tmpi.C) shows the usage of the package
+An example code (./src/test_tmpi.C) that shows the usage of the package
 
 Example to run the macro with 10 parallel process:
 In the workdir: "mpirun -np 10 ./bin/test_tmpi". 
