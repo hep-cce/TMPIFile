@@ -1,11 +1,11 @@
 OBJS_LIB = $(shell ls src/*.cxx | sed 's/\.cxx/.o/')
 PROGS = $(shell ls src/*.C | sed 's/\.C//' | sed 's/src\///')
-CC = mpicxx
+CC=CC
 CXXFLAGS = `root-config --cflags` -fPIC -g -DLINUX
 MPDIR = $(MPLIBS) #******path to MPICH LIBRARIES******#
 MPINCLUDEPATH = $(MPIINCLUDES) #********PATH TO MPICH HEADERS*******#
 INCLUDES = -I./include -I$(MPINCLUDEPATH) -I$(shell root-config --incdir)
-MPLIB = -lmpich -lmpi -lmpicxx -lmpl -lopa #*********MPICH LIBRARIES********#
+MPLIB = #-lmpich -lmpi -lmpicxx -lmpl -lopa #*********MPICH LIBRARIES********#
 ROOTLIBS = $(shell root-config --libs) -lEG -dynamic
 COPTS = -fPIC -DLINUX -O0 -g $(shell root-config --cflags) #********m64 or m32 bit(?)*********#
 INCLUDE = $(shell ls include/TMPIFile.h) 

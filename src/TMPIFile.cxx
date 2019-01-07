@@ -30,7 +30,10 @@
 #include "TSystem.h"
 #include "TMath.h"
 #include "TTree.h"
+#include "TH1D.h"
+
 #include <string>
+#include <chrono>
 
 ClassImp(TMPIFile);
 //The constructor should be similar to TMemFile...
@@ -132,18 +135,21 @@ void TMPIFile::UpdateEndProcess(){
 
 void TMPIFile::RunCollector(bool cache)
 {
-  //by this time, MPI should be initialized...
-  int rank,size;
-  MPI_Comm_rank(row_comm,&rank);
-  MPI_Comm_size(row_comm,&size);
-  ReceiveAndMerge(cache,row_comm,rank,size);
+    //by this time, MPI should be initialized...
+    int rank,size;
+    MPI_Comm_rank(row_comm,&rank);
+    MPI_Comm_size(row_comm,&size);
+
+    std::string msg = "RunCollector PID: ";
+    msg += std::to_string(getpid());
+    Info("Collector", msg.c_str());
+    
+    ReceiveAndMerge(cache,row_comm,rank,size);
 }
 //*******************Collector's main function*******************888
 void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
-  if(!this->IsCollector())return;
   this->GetRootName();
   THashTable mergers;
-  // int empty_buff=0;
   int counter=1;
   while(fEndProcess!=size-1){
     char *buf;
@@ -158,16 +164,32 @@ void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
   if(number_bytes==0){
     //empty buffer is a worker's last send request....
     this->UpdateEndProcess();
-
-     MPI_Recv(buf,number_bytes,MPI_CHAR,source,tag,comm,MPI_STATUS_IGNORE); 
+    MPI_Recv(buf,number_bytes,MPI_CHAR,source,tag,comm,MPI_STATUS_IGNORE); 
   }
   else{
 
     MPI_Recv(buf,number_bytes,MPI_CHAR,source,tag,comm,MPI_STATUS_IGNORE); 
     
+    auto start = std::chrono::high_resolution_clock::now();
+    
     Int_t client_Id =counter-1; 
-    TMemFile *infile = new TMemFile(fMPIFilename,buf,number_bytes,"UPDATE"); 
-    // const Float_t clientThreshold = 0.75;
+    TMemFile *infile = new TMemFile(fMPIFilename,buf,number_bytes,"UPDATE");
+
+    std::string msg;
+    ////////////////////// Print debug information
+    TTree *tree = (TTree *) infile->Get("tree");
+    TH1D *h = new TH1D("hist", "hist", 100, 0, 100);
+    tree->SetBranchAddress("histogram", &h);
+    msg = "Data:\t";
+    for (int i = 0; i < tree->GetEntries(); ++i) {
+        tree->GetEntry(i);
+        msg += std::to_string((int) h->GetEntries());
+        msg += "\t";
+    }
+    //delete h; //TODO why: delete h -> likely due to a TTree larger than 100Gb
+    Info("Collector", msg.c_str());
+    ////////////////////// End of print
+
     ParallelFileMerger *info = (ParallelFileMerger*)mergers.FindObject(fMPIFilename);
     if(!info){
       info = new ParallelFileMerger(fMPIFilename,cache);
@@ -179,27 +201,35 @@ void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
 
     }
     info->RegisterClient(client_Id,infile);
-    //    if(info->NeedMerge(clientThreshold)){
-      info->Merge();
-      // }
+    auto midway = std::chrono::high_resolution_clock::now();
+    info->Merge();
     infile = 0;
-  
-    TIter next(&mergers);
-    while((info = (ParallelFileMerger*)next())){
-      //  if(info->NeedFinalMerge()){ //not needed for TMPIFile. Every sent buffer is merged.
-	info->Merge();
-	//  }
-    }
+
+    //TODO: this second merge seems not necessary
+    //TIter next(&mergers);
+    //while((info = (ParallelFileMerger*)next()))
+	//info->Merge();
+
     counter=counter+1;
+
+    auto end = std::chrono::high_resolution_clock::now();
+    double init_time = std::chrono::duration_cast<std::chrono::duration<double>> (midway - start).count();
+    double merge_time = std::chrono::duration_cast<std::chrono::duration<double>> (end - midway).count();
+    msg = "Init overhead: ";
+    msg += std::to_string(init_time);
+    msg += "\tMerge overhead: ";
+    msg += std::to_string(merge_time);
+    msg += "\tBuffer received: ";
+    msg += std::to_string(number_bytes);
+    Info("Collector", msg.c_str());
   }
    delete [] buf;
   }
   if(fEndProcess==size-1){
     mergers.Delete();
-
     return;
   }
-  }
+}
 
 
 Bool_t TMPIFile::R__NeedInitialMerge(TDirectory *dir)
@@ -258,6 +288,7 @@ Bool_t TMPIFile::ParallelFileMerger::InitialMerge(TFile *input)
 }
 Bool_t TMPIFile::ParallelFileMerger::Merge()
 {
+  auto start = std::chrono::high_resolution_clock::now();
   tcl.R__DeleteObject(fMerger.GetOutputFile(),kFALSE); //removing object that cannot be incrementally merged and will not be reset by the client code..
   for(unsigned int f = 0; f<fClients.size();++f){
     fMerger.AddFile(fClients[f].fFile);
@@ -276,6 +307,11 @@ Bool_t TMPIFile::ParallelFileMerger::Merge()
       delete file;
     }
   }
+  auto end = std::chrono::high_resolution_clock::now();
+  double time = std::chrono::duration_cast<std::chrono::duration<double>> (end - start).count();
+  std::string msg = "Merge(): ";
+  msg += std::to_string(time);
+  Info("ParallelFileMerger", msg.c_str());
   fLastMerge = TTimeStamp();
   fNClientsContact = 0;
   fClientsContact.Clear();
@@ -411,9 +447,12 @@ void TMPIFile::CreateBufferAndSend(bool cache,MPI_Comm comm)
   MPI_Comm_size(comm,&size);
   if(rank==0)return;
   int count =  this->GetSize();
-   fSendBuf = new char[count];
+  fSendBuf = new char[count];
   this->CopyTo(fSendBuf,count); 
   MPI_Isend(fSendBuf,count,MPI_CHAR,0,fColor,comm,&fRequest);
+  std::string msg = "Buffer sent: ";
+  msg += std::to_string(count);
+  Info("CreateBufferAndSend()", msg.c_str());
 
 }
 void TMPIFile::CreateEmptyBufferAndSend(bool cache,MPI_Comm comm)
@@ -516,8 +555,3 @@ Int_t TMPIFile::GetMPIColor(){
 Int_t TMPIFile::GetSplitLevel(){
   return fSplitLevel;
 }
-
-
-
-
-
