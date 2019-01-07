@@ -176,19 +176,6 @@ void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
     TMemFile *infile = new TMemFile(fMPIFilename,buf,number_bytes,"UPDATE");
 
     std::string msg;
-    ////////////////////// Print debug information
-    TTree *tree = (TTree *) infile->Get("tree");
-    TH1D *h = new TH1D("hist", "hist", 100, 0, 100);
-    tree->SetBranchAddress("histogram", &h);
-    msg = "Data:\t";
-    for (int i = 0; i < tree->GetEntries(); ++i) {
-        tree->GetEntry(i);
-        msg += std::to_string((int) h->GetEntries());
-        msg += "\t";
-    }
-    //delete h; //TODO why: delete h -> likely due to a TTree larger than 100Gb
-    Info("Collector", msg.c_str());
-    ////////////////////// End of print
 
     ParallelFileMerger *info = (ParallelFileMerger*)mergers.FindObject(fMPIFilename);
     if(!info){
