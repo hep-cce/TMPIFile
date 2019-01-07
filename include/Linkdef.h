@@ -5,6 +5,8 @@
 #pragma link C++ nestedclasses;
 #pragma link C++ class TMPIFile+;
 #pragma link C++ class TClientInfo+;
-
-
+#pragma link C++ class Jet+;
+#pragma link C++ class Hit+;
+#pragma link C++ class Track+;
+#pragma link C++ class JetEvent+;
 #endif

@@ -10,6 +10,7 @@ ROOTLIBS = $(shell root-config --libs) -lEG -dynamic
 COPTS = -fPIC -DLINUX -O0 -g $(shell root-config --cflags) #********m64 or m32 bit(?)*********#
 INCLUDE = $(shell ls include/TMPIFile.h) 
 INCLUDE += $(shell ls include/TClientInfo.h)
+INCLUDE += $(shell ls include/JetEvent.h)
 MPINCLUDES = $(shell ls $(MPINCLUDEPATH)/*.h)
 all: lib programs
 

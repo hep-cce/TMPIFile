@@ -15,6 +15,7 @@
 #include "TMemFile.h"
 #include "TH1D.h"
 #include "TError.h"
+#include "JetEvent.h"
 
 #include "mpi.h"
 
@@ -35,35 +36,17 @@ void test_tmpi(){
     //now we need to divide the collector and worker load from here..
     if (newfile->IsCollector()) newfile->RunCollector(); //Start the Collector Function
     else { //Workers' part
-        TTree *tree = new TTree("tree","tree");
+        TTree *tree = new TTree("tree","Event example with Jets");
         tree->SetAutoFlush(400000000);
-        Float_t px,py;
-    
-        // Give the array a random size
-        // & fill it with random numbers
-        std::random_device rd;
-        std::mt19937 mt(rd());
+        JetEvent *event = new JetEvent;
+        tree->Branch("event","JetEvent",&event,8000,2);
 
-        // The size of each event's output data is between 2 and 3 MB
-        std::uniform_real_distribution<double> dist_N(262144., 393216.);
-        const int N {(int) dist_N(mt)};
-        std::uniform_real_distribution<double> dist(0.0, 100.0);
-
-        TH1D *h = new TH1D("name", "title", N, 0, N);
-        for (int i = 0; i < N; i++)
-            h->Fill(i, dist(mt));
-       
-        tree->Branch("px", &px);
-        tree->Branch("py", &py);
-        tree->Branch("histogram", h);
-        gRandom->SetSeed(seed);
-      
         Int_t sleep=0;
         //total number of entries
         Int_t tot_entries = 12;
         for(int i=0;i<tot_entries;i++){
             std::cout<<"Event "<<i<<" local rank "<<newfile->GetMPILocalRank()<< std::endl;
-            px = py = i;
+            event->Build();
             sleep = abs(gRandom->Gaus(12,3));
             //sleep after every events to simulate the reconstruction time... 
             std::this_thread::sleep_for(std::chrono::seconds(sleep));
