@@ -15,6 +15,5 @@ target_link_libraries(test_tmpi TMPI ${ROOT_LIBRARIES})
 install(
         TARGETS
         test_tmpi
-        DESTINATION
-        bin
+        RUNTIME DESTINATION bin
 )
