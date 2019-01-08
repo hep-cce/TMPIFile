@@ -1,0 +1,6 @@
+OSNAME=`uname -s`
+if [ ${OSNAME} == "Darwin" ]
+then
+  export DYLD_LIBRARY_PATH=@CMAKE_INSTALL_PREFIX@/lib:${DYLD_LIBRARY_PATH}
+fi
+export LD_LIBRARY_PATH=@CMAKE_INSTALL_PREFIX@/lib:${LD_LIBRARY_PATH}
