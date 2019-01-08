@@ -5,48 +5,48 @@ This project builds a TFile-like object that uses MPI (Message Passing Interface
     August 8, 2018
 
 ## PRE-REQUISITES
-[ROOT](https://root.cern.ch/) (preferably ROOT 6 or higher) a data processing, statistical analysis, visualization and storage framework
+[ROOT](https://root.cern.ch/) preferably ROOT 6 or higher
 
-[MPICH](http://www.mpich.org/) or any other MPI (e.g. OpenMPI, Intel MPI, etc.) distributions
+[MPICH](http://www.mpich.org/) or other distributions like OpenMPI, Intel MPI, etc.
 
-[CMake](https://cmake.org/) a cross-platform compilation tool
+[CMake](https://cmake.org/) 3.2 or higher
 
 ## INSTALLATION
 The following instructions assume the user has already built/installed ROOT, MPICH, and CMake in the machine.
 
-Create a new working directory for the project (tmpi)
+Create a new working directory for the project **tmpi**:
 ```bash
 mkdir tmpi
 ```
-Put the TMPIFile repo under **tmpi**.
+Put the TMPIFile repo under **tmpi**:
 ```bash
 cd tmpi
 git clone git@github.com:hep-cce/TMPIFile.git
 ```
 
-Create a **build** and an **install** directory
+Create a **build** and an **install** directory:
 ```bash
 mkdir install build
 ```
 
-Go to the **build** directory and build CMake
+Go to the **build** directory and build CMake:
 ```bash
 cd build
 C=mpicc CXX=mpicxx cmake ../TMPIFile/ -DCMAKE_INSTALL_PREFIX=/PATH/TO/tmpi/install/ -DCMAKE_BUILD_TYPE=RelWithDebInfo
 ```
 
-Make
+Make:
 ```bash
 make install 
 ```
 
 ## USAGE EXAMPLE
-Setup environment
+Setup environment:
 ```bash
 source install/env_tmpi.sh
 ```
 
-Run example code
+Run example code:
 ```bash
 mpirun -np 10 ./install/bin/test_tmpi
 ```
