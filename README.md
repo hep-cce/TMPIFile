@@ -18,18 +18,18 @@ Create a new working directory for the project (tmpi)
 ```bash
 mkdir tmpi
 ```
-Put the TMPIFile repo under "tmpi".
+Put the TMPIFile repo under **tmpi**.
 ```bash
 cd tmpi
 git clone git@github.com:hep-cce/TMPIFile.git
 ```
 
-Create a "build" and an "install" directory
+Create a **build** and an **install** directory
 ```bash
 mkdir install build
 ```
 
-Go to the "build" directory and build CMake
+Go to the **build** directory and build CMake
 ```bash
 cd build
 C=mpicc CXX=mpicxx cmake ../TMPIFile/ -DCMAKE_INSTALL_PREFIX=/PATH/TO/tmpi/install/ -DCMAKE_BUILD_TYPE=RelWithDebInfo
@@ -46,7 +46,7 @@ Setup environment
 source install/env_tmpi.sh
 ```
 
-Run example code (in the "tmpi")
+Run example code
 ```bash
 mpirun -np 10 ./install/bin/test_tmpi
 ```
