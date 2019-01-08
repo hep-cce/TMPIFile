@@ -43,11 +43,11 @@ void test_tmpi(){
 
         Int_t sleep=0;
         //total number of entries
-        Int_t tot_entries = 12;
+        Int_t tot_entries = 20;
         for(int i=0;i<tot_entries;i++){
             std::cout<<"Event "<<i<<" local rank "<<newfile->GetMPILocalRank()<< std::endl;
             event->Build();
-            sleep = abs(gRandom->Gaus(12,3));
+            sleep = abs(gRandom->Gaus(2,1));
             //sleep after every events to simulate the reconstruction time... 
             std::this_thread::sleep_for(std::chrono::seconds(sleep));
             tree->Fill();
@@ -55,7 +55,6 @@ void test_tmpi(){
             //************START OF SYNCING IMPLEMENTATION FROM USERS' SIDE**********************
             if((i+1)%sync_rate==0){
                 newfile->Sync(); //this one as a worker...
-                tree->Reset();
             }
         }
         //do the syncing one more time

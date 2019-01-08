@@ -31,6 +31,7 @@
 #include "TMath.h"
 #include "TTree.h"
 #include "TH1D.h"
+#include "JetEvent.h"
 
 #include <string>
 #include <chrono>
@@ -176,6 +177,23 @@ void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
     TMemFile *infile = new TMemFile(fMPIFilename,buf,number_bytes,"UPDATE");
 
     std::string msg;
+    ////////////////////// Print debug information
+    TTree *tree = (TTree *) infile->Get("tree");
+    JetEvent *event = new JetEvent;
+    tree->SetBranchAddress("event", &event);
+    for (int i = 0; i < tree->GetEntries(); ++i) {
+        tree->GetEntry(i);
+        msg = "Jets: ";
+        msg += std::to_string(event->GetNjet());
+        msg += "\tTracks: ";
+        msg += std::to_string(event->GetNtrack());
+        msg += "\tHitsA: ";
+        msg += std::to_string(event->GetNhitA());
+        msg += "\tHitsB: ";
+        msg += std::to_string(event->GetNhitB());
+        Info("ReceiveAndMerge()", msg.c_str());
+    }
+    ////////////////////// End of print
 
     ParallelFileMerger *info = (ParallelFileMerger*)mergers.FindObject(fMPIFilename);
     if(!info){
@@ -477,6 +495,7 @@ void TMPIFile::Sync(bool cache){
       fRequest=0; 
       CreateBufferAndSend(cache,row_comm);
    }
+   this->ResetAfterMerge((TFileMergeInfo*)0);
 }
 
 void TMPIFile::MPIClose(bool cache){

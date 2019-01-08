@@ -82,7 +82,7 @@ private:
 public:
    JetEvent();
    virtual ~JetEvent();
-   void          Build(Int_t jetm=3, Int_t trackm=10, Int_t hitam=100, Int_t hitbm=10);
+   void          Build(Int_t jetm=50, Int_t trackm=60, Int_t hitam=200, Int_t hitbm=100);
    void          Clear(Option_t *option ="");
    void          Reset(Option_t *option ="");
    Int_t         GetNjet()   const { return fNjet; }
