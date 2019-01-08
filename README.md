@@ -1,41 +1,55 @@
 # TMPI
-This project builds a TFile like object that uses MPICH (Message Passing Interface) libraries and TMemFile for parallelization of IO process. 
+This project builds a TFile-like object that uses MPI (Message Passing Interface) libraries and TMemFile for parallelization of IO process. 
 
-# Author: Amit Bashyal 
-    August 8,2018
+## Author: Amit Bashyal 
+    August 8, 2018
 
-# PRE-REQUISITES
-1. ROOT (preferably ROOT 6 or higher)
-(https://root.cern.ch/) for download and installation instructions
+## PRE-REQUISITES
+[ROOT](https://root.cern.ch/) preferably ROOT 6 or higher
 
-2. MPICH
-(http://www.mpich.org/) for download and installation instructions
+[MPICH](http://www.mpich.org/) or other distributions like OpenMPI, Intel MPI, etc.
 
-# INSTALLATION
-The following instructions assume the user has already build/installed
-ROOT and MPICH in the machine.
-1. Create a new working directory for the project (workdir)
+[CMake](https://cmake.org/) 3.2 or higher
 
-2. In the workdir, open the "setenv.sh" file.
+## INSTALLATION
+The following instructions assume the user has already built/installed ROOT, MPICH, and CMake in the machine.
 
-3. Replace "source <path/to/ROOTSYS/bin/thisroot.sh" with the actual path.
+Create a new working directory for the project **tmpi**:
+```bash
+mkdir tmpi
+```
+Put the TMPIFile repo under **tmpi**:
+```bash
+cd tmpi
+git clone git@github.com:hep-cce/TMPIFile.git
+```
 
-4. Put path to MPICH header files in "MPIINCLUDES=" .
+Create a **build** and an **install** directory:
+```bash
+mkdir install build
+```
 
-5. Put  path to MPICH libraries in "MPILIBS=".
+Go to the **build** directory and build CMake:
+```bash
+cd build
+C=mpicc CXX=mpicxx cmake ../TMPIFile/ -DCMAKE_INSTALL_PREFIX=/PATH/TO/tmpi/install/ -DCMAKE_BUILD_TYPE=RelWithDebInfo
+```
 
-6. Save setenv.sh.
+Make:
+```bash
+make install 
+```
 
-7. In the workdir, do "make".
+## USAGE EXAMPLE
+Setup environment:
+```bash
+source install/env_tmpi.sh
+```
 
-# USAGE EXAMPLE
-An example code (./src/test_tmpi.C) that shows the usage of the package
+Run example code:
+```bash
+mpirun -np 10 ./install/bin/test_tmpi
+```
 
-Example to run the macro with 10 parallel process:
-In the workdir: "mpirun -np 10 ./bin/test_tmpi". 
-
-
-# CREDITS:
-I would like to thank Taylor Childers for adivising me, HEPCCE (High Energy Physics Center of Computational Excellence) 
-program and Argonne National Laboratory for providing the opportunity to work on 
-this project.
+## CREDITS:
+I would like to thank Taylor Childers for advising me, HEPCCE (High Energy Physics Center of Computational Excellence) program and Argonne National Laboratory for providing the opportunity to work on this project.
