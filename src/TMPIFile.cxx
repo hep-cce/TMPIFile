@@ -31,6 +31,7 @@
 #include "TMath.h"
 #include "TTree.h"
 #include "TH1D.h"
+#include "JetEvent.h"
 
 #include <string>
 #include <chrono>
@@ -178,16 +179,20 @@ void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
     std::string msg;
     ////////////////////// Print debug information
     TTree *tree = (TTree *) infile->Get("tree");
-    TH1D *h = new TH1D("hist", "hist", 100, 0, 100);
-    tree->SetBranchAddress("histogram", &h);
-    msg = "Data:\t";
+    JetEvent *event = new JetEvent;
+    tree->SetBranchAddress("event", &event);
     for (int i = 0; i < tree->GetEntries(); ++i) {
         tree->GetEntry(i);
-        msg += std::to_string((int) h->GetEntries());
-        msg += "\t";
+        msg = "Jets: ";
+        msg += std::to_string(event->GetNjet());
+        msg += "\tTracks: ";
+        msg += std::to_string(event->GetNtrack());
+        msg += "\tHitsA: ";
+        msg += std::to_string(event->GetNhitA());
+        msg += "\tHitsB: ";
+        msg += std::to_string(event->GetNhitB());
+        Info("ReceiveAndMerge()", msg.c_str());
     }
-    //delete h; //TODO why: delete h -> likely due to a TTree larger than 100Gb
-    Info("Collector", msg.c_str());
     ////////////////////// End of print
 
     ParallelFileMerger *info = (ParallelFileMerger*)mergers.FindObject(fMPIFilename);
@@ -490,6 +495,7 @@ void TMPIFile::Sync(bool cache){
       fRequest=0; 
       CreateBufferAndSend(cache,row_comm);
    }
+   this->ResetAfterMerge((TFileMergeInfo*)0);
 }
 
 void TMPIFile::MPIClose(bool cache){

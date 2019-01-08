@@ -11,6 +11,8 @@
 #include "TRandom.h"
 #include "JetEvent.h"
 
+#include <string>
+
 TClonesArray *JetEvent::fgJets   = 0;
 TClonesArray *JetEvent::fgTracks = 0;
 TClonesArray *JetEvent::fgHitsA  = 0;
@@ -93,6 +95,15 @@ void JetEvent::Build(Int_t jetm, Int_t trackm, Int_t hitam, Int_t hitbm) {
   //we assume that our events do not address each other. We reset the
   //object count to what it was at the beginning of the event.
   TProcessID::SetObjectCount(ObjectNumber);
+  std::string msg = "Jets: ";
+  msg += std::to_string(fNjet);
+  msg += "\tTracks: ";
+  msg += std::to_string(fNtrack);
+  msg += "\tHitsA: ";
+  msg += std::to_string(fNhitA);
+  msg += "\tHitsB: ";
+  msg += std::to_string(fNhitB);
+  Info("Build()", msg.c_str());
 }
 
 
