@@ -34,3 +34,9 @@ set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
 
 add_subdirectory(src)
 add_subdirectory(test)
+
+# Build environment script
+configure_file(env_tmpi.sh.in ${CMAKE_CURRENT_BINARY_DIR}/env_tmpi.sh @ONLY IMMEDIATE)
+# and install it
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/env_tmpi.sh
+	DESTINATION ${CMAKE_INSTALL_PREFIX})
