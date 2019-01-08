@@ -5,11 +5,11 @@ This project builds a TFile-like object that uses MPI (Message Passing Interface
     August 8, 2018
 
 ## PRE-REQUISITES
-[ROOT](https://root.cern.ch/) (preferably ROOT 6 or higher) a data processing, statistical analysis, visualization and storage framework
+[ROOT](https://root.cern.ch/) preferably ROOT 6 or higher
 
-[MPICH](http://www.mpich.org/) or any other MPI (e.g. OpenMPI, Intel MPI, etc.) distributions
+[MPICH](http://www.mpich.org/) or other distributions like OpenMPI, Intel MPI, etc.
 
-[CMake](https://cmake.org/) a cross-platform compilation tool
+[CMake](https://cmake.org/) 3.2 or higher
 
 ## INSTALLATION
 The following instructions assume the user has already built/installed ROOT, MPICH, and CMake in the machine.
