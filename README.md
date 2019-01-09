@@ -29,6 +29,11 @@ Create a **build** and an **install** directory:
 mkdir install build
 ```
 
+**Make sure to enable dynamic linking on Cray system before build:**
+```bash
+export CRAYPE_LINK_TYPE=dynamic
+```
+
 Go to the **build** directory and build CMake:
 ```bash
 cd build
