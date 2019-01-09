@@ -26,10 +26,16 @@
 #include <iostream>
 
 void test_tmpi(){
-    char mpifname[100];
+
     Int_t N_collectors = 1; //specify how many collectors to receive the message
-    Int_t sync_rate = 4; //events per send request by the worker
+    Int_t sync_rate = 100; //events per send request by the worker
+    Int_t events_per_rank = 1000; // events each rank will produce
+    Int_t sleep_mean = 10; // typical KNL node produces 0.1 evt / sec / node
+    Int_t sleep_sigma = 2; 
+
+    char mpifname[100];
     sprintf(mpifname,"Simple_MPIFile.root");
+
     TMPIFile *newfile = new TMPIFile("Simple_MPIFile.root","RECREATE",N_collectors);
     Int_t seed = newfile->GetMPILocalSize()+newfile->GetMPIColor()+newfile->GetMPILocalRank();
     
@@ -37,17 +43,16 @@ void test_tmpi(){
     if (newfile->IsCollector()) newfile->RunCollector(); //Start the Collector Function
     else { //Workers' part
         TTree *tree = new TTree("tree","Event example with Jets");
-        tree->SetAutoFlush(400000000);
+        tree->SetAutoFlush(sync_rate);
         JetEvent *event = new JetEvent;
         tree->Branch("event","JetEvent",&event,8000,2);
 
         Int_t sleep=0;
         //total number of entries
-        Int_t tot_entries = 20;
-        for(int i=0;i<tot_entries;i++){
+        for(int i=0;i<events_per_rank;i++){
             std::cout<<"Event "<<i<<" local rank "<<newfile->GetMPILocalRank()<< std::endl;
             event->Build();
-            sleep = abs(gRandom->Gaus(2,1));
+            sleep = abs(gRandom->Gaus(sleep_mean,sleep_sigma));
             //sleep after every events to simulate the reconstruction time... 
             std::this_thread::sleep_for(std::chrono::seconds(sleep));
             tree->Fill();
@@ -58,7 +63,8 @@ void test_tmpi(){
             }
         }
         //do the syncing one more time
-        if(tot_entries%sync_rate!=0)newfile->Sync(); 
+        if(events_per_rank%sync_rate!=0) newfile->Sync(); 
+        
         //************END OF SYNCING IMPLEMENTATION FROM USERS' SIDE***********************
     }
     newfile->MPIClose();
