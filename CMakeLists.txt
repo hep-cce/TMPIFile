@@ -1,5 +1,4 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
-
 project(TMPIFile CXX)
 
 ##### PATH OF CMAKE PACKAGES
@@ -11,7 +10,7 @@ find_package(MPI REQUIRED)
 find_package(ROOT REQUIRED)
 
 if( NOT DEFINED MPI_INCLUDE_PATH )
-    set( MPI_INCLUDE_PATH "/home/yswang/TOOLS/mpich/include" )
+    set( MPI_INCLUDE_PATH "$ENV{MPICH_DIR}/include" )
 endif()
 
 # Set the install path if not set by -DCMAKE_INSTALL_PREFIX=...
