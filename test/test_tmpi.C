@@ -31,9 +31,9 @@
 void test_tmpi(){
 
     Int_t N_collectors = 1; //specify how many collectors to receive the message
-    Int_t sync_rate = 100; //events per send request by the worker
-    Int_t events_per_rank = 1000; // events each rank will produce
-    Int_t sleep_mean = 10; // typical KNL node produces 0.1 evt / sec / node
+    Int_t sync_rate = 10; //events per send request by the worker
+    Int_t events_per_rank = 50; // events each rank will produce
+    Int_t sleep_mean = 5; // typical KNL node produces 0.1 evt / sec / node
     Int_t sleep_sigma = 2;
 
     std::string mpifname("merged_output_");
