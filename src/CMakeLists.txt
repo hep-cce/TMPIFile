@@ -28,5 +28,6 @@ target_link_libraries( ${PROJECT_NAME} ${ROOT_LIBRARIES} )
 install(
         TARGETS
         ${PROJECT_NAME}
+        ARCHIVE DESTINATION lib
         LIBRARY DESTINATION lib
 )

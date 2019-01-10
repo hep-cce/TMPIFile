@@ -28,7 +28,7 @@
 void test_tmpi(){
     char mpifname[100];
     Int_t N_collectors = 1; //specify how many collectors to receive the message
-    Int_t sync_rate = 4; //events per send request by the worker
+    Int_t sync_rate = 1; //events per send request by the worker
     sprintf(mpifname,"Simple_MPIFile.root");
     TMPIFile *newfile = new TMPIFile("Simple_MPIFile.root","RECREATE",N_collectors);
     Int_t seed = newfile->GetMPILocalSize()+newfile->GetMPIColor()+newfile->GetMPILocalRank();
@@ -46,7 +46,7 @@ void test_tmpi(){
         Int_t tot_entries = 20;
         for(int i=0;i<tot_entries;i++){
             std::cout<<"Event "<<i<<" local rank "<<newfile->GetMPILocalRank()<< std::endl;
-            event->Build();
+            event->Build((i+1) * 100);
             sleep = abs(gRandom->Gaus(2,1));
             //sleep after every events to simulate the reconstruction time... 
             std::this_thread::sleep_for(std::chrono::seconds(sleep));
