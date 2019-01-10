@@ -28,8 +28,8 @@
 void test_tmpi(){
 
     Int_t N_collectors = 1; //specify how many collectors to receive the message
-    Int_t sync_rate = 100; //events per send request by the worker
-    Int_t events_per_rank = 1000; // events each rank will produce
+    Int_t sync_rate = 1; //events per send request by the worker
+    Int_t events_per_rank = 20; // events each rank will produce
     Int_t sleep_mean = 10; // typical KNL node produces 0.1 evt / sec / node
     Int_t sleep_sigma = 2; 
 
@@ -51,8 +51,8 @@ void test_tmpi(){
         //total number of entries
         for(int i=0;i<events_per_rank;i++){
             std::cout<<"Event "<<i<<" local rank "<<newfile->GetMPILocalRank()<< std::endl;
-            event->Build();
-            sleep = abs(gRandom->Gaus(sleep_mean,sleep_sigma));
+            event->Build((i+1) * 100);
+            sleep = abs(gRandom->Gaus(2,1));
             //sleep after every events to simulate the reconstruction time... 
             std::this_thread::sleep_for(std::chrono::seconds(sleep));
             tree->Fill();

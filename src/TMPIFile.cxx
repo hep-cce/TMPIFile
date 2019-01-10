@@ -179,20 +179,21 @@ void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
     std::string msg;
     ////////////////////// Print debug information
     TTree *tree = (TTree *) infile->Get("tree");
-    JetEvent *event = new JetEvent;
-    tree->SetBranchAddress("event", &event);
-    for (int i = 0; i < tree->GetEntries(); ++i) {
-        tree->GetEntry(i);
-        msg = "Jets: ";
-        msg += std::to_string(event->GetNjet());
-        msg += "\tTracks: ";
-        msg += std::to_string(event->GetNtrack());
-        msg += "\tHitsA: ";
-        msg += std::to_string(event->GetNhitA());
-        msg += "\tHitsB: ";
-        msg += std::to_string(event->GetNhitB());
-        Info("ReceiveAndMerge()", msg.c_str());
-    }
+    auto tree_size = tree->GetTotBytes();
+    //JetEvent *event = new JetEvent;
+    //tree->SetBranchAddress("event", &event);
+    //for (int i = 0; i < tree->GetEntries(); ++i) {
+    //    tree->GetEntry(i);
+    //    msg = "Jets: ";
+    //    msg += std::to_string(event->GetNjet());
+    //    msg += "\tTracks: ";
+    //    msg += std::to_string(event->GetNtrack());
+    //    msg += "\tHitsA: ";
+    //    msg += std::to_string(event->GetNhitA());
+    //    msg += "\tHitsB: ";
+    //    msg += std::to_string(event->GetNhitB());
+    //    Info("ReceiveAndMerge()", msg.c_str());
+    //}
     ////////////////////// End of print
 
     ParallelFileMerger *info = (ParallelFileMerger*)mergers.FindObject(fMPIFilename);
@@ -200,11 +201,10 @@ void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
       info = new ParallelFileMerger(fMPIFilename,cache);
       mergers.Add(info);
     }
-    if(R__NeedInitialMerge(infile)){
-
-      info->InitialMerge(infile);
-
-    }
+    auto init_start = std::chrono::high_resolution_clock::now();
+    if(R__NeedInitialMerge(infile))
+	info->InitialMerge(infile);
+    auto init_end = std::chrono::high_resolution_clock::now();
     info->RegisterClient(client_Id,infile);
     auto midway = std::chrono::high_resolution_clock::now();
     info->Merge();
@@ -220,12 +220,19 @@ void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
     auto end = std::chrono::high_resolution_clock::now();
     double init_time = std::chrono::duration_cast<std::chrono::duration<double>> (midway - start).count();
     double merge_time = std::chrono::duration_cast<std::chrono::duration<double>> (end - midway).count();
+    double IM_time = std::chrono::duration_cast<std::chrono::duration<double>> (init_end - init_start).count();
     msg = "Init overhead: ";
     msg += std::to_string(init_time);
-    msg += "\tMerge overhead: ";
-    msg += std::to_string(merge_time);
+    msg += "\tInitMerge() overhead: ";
+    msg += std::to_string(IM_time);
+    //msg += "\tMerge overhead: ";
+    //msg += std::to_string(merge_time);
     msg += "\tBuffer received: ";
-    msg += std::to_string(number_bytes);
+    msg += std::to_string(number_bytes/1024/1024);
+    msg += " MB";
+    msg += "\ttree size: ";
+    msg += std::to_string(tree_size/1024/1024);
+    msg += " MB";
     Info("Collector", msg.c_str());
   }
    delete [] buf;
@@ -314,9 +321,6 @@ Bool_t TMPIFile::ParallelFileMerger::Merge()
   }
   auto end = std::chrono::high_resolution_clock::now();
   double time = std::chrono::duration_cast<std::chrono::duration<double>> (end - start).count();
-  std::string msg = "Merge(): ";
-  msg += std::to_string(time);
-  Info("ParallelFileMerger", msg.c_str());
   fLastMerge = TTimeStamp();
   fNClientsContact = 0;
   fClientsContact.Clear();
