@@ -10,10 +10,10 @@ include_directories(
 )
 
 add_executable(test_tmpi test_tmpi.C)
-target_link_libraries(test_tmpi TMPI ${ROOT_LIBRARIES})
+target_link_libraries(test_tmpi TMPI)
 
 install(
         TARGETS
         test_tmpi
-        RUNTIME DESTINATION bin
+        DESTINATION bin
 )
