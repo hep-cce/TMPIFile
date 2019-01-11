@@ -25,8 +25,16 @@ set( ${PROJECT_NAME}_DICTIONARIES TMPIDict.cxx)
 add_library( ${PROJECT_NAME} SHARED ${${PROJECT_NAME}_SRCS} ${${PROJECT_NAME}_DICTIONARIES} )
 target_link_libraries( ${PROJECT_NAME} ${ROOT_LIBRARIES} )
 
+#install target
 install(
         TARGETS
         ${PROJECT_NAME}
-        LIBRARY DESTINATION lib
+        DESTINATION lib
+)
+
+#Install Cling pcm file
+install(
+        FILES
+        ${CMAKE_CURRENT_BINARY_DIR}/TMPIDict_rdict.pcm
+        DESTINATION lib
 )
