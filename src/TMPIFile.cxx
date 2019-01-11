@@ -35,6 +35,7 @@
 
 #include <string>
 #include <chrono>
+#include <iostream>
 
 ClassImp(TMPIFile);
 //The constructor should be similar to TMemFile...
@@ -147,119 +148,147 @@ void TMPIFile::RunCollector(bool cache)
     
     ReceiveAndMerge(cache,row_comm,rank,size);
 }
+
 //*******************Collector's main function*******************888
 void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
-  this->GetRootName();
-  THashTable mergers;
-  int counter=1;
-  while(fEndProcess!=size-1){
-    char *buf;
-    int count;
-  MPI_Status status;
-  MPI_Probe(MPI_ANY_SOURCE,MPI_ANY_TAG,comm,&status);
-  MPI_Get_count(&status,MPI_CHAR,&count);
-  int number_bytes = sizeof(char)*count;
-  buf = new char[number_bytes];
-  int source = status.MPI_SOURCE;
-  int tag = status.MPI_TAG;
-  if(number_bytes==0){
-    //empty buffer is a worker's last send request....
-    this->UpdateEndProcess();
-    MPI_Recv(buf,number_bytes,MPI_CHAR,source,tag,comm,MPI_STATUS_IGNORE); 
-  }
-  else{
+   this->GetRootName();
+   THashTable mergers;
+   int counter=1;
 
-    MPI_Recv(buf,number_bytes,MPI_CHAR,source,tag,comm,MPI_STATUS_IGNORE); 
-    
-    auto start = std::chrono::high_resolution_clock::now();
-    
-    Int_t client_Id =counter-1; 
-    TMemFile *infile = new TMemFile(fMPIFilename,buf,number_bytes,"UPDATE");
+   while(fEndProcess!=size-1){
 
-    std::string msg;
-    ////////////////////// Print debug information
-    TTree *tree = (TTree *) infile->Get("tree");
-    JetEvent *event = new JetEvent;
-    tree->SetBranchAddress("event", &event);
-    for (int i = 0; i < tree->GetEntries(); ++i) {
-        tree->GetEntry(i);
-        msg = "Jets: ";
-        msg += std::to_string(event->GetNjet());
-        msg += "\tTracks: ";
-        msg += std::to_string(event->GetNtrack());
-        msg += "\tHitsA: ";
-        msg += std::to_string(event->GetNhitA());
-        msg += "\tHitsB: ";
-        msg += std::to_string(event->GetNhitB());
-        Info("ReceiveAndMerge()", msg.c_str());
-    }
-    ////////////////////// End of print
+      // check if message has been received
+      MPI_Status status;
+      MPI_Probe(MPI_ANY_SOURCE,MPI_ANY_TAG,comm,&status);
+      
+      // get bytes received
+      int count;
+      MPI_Get_count(&status,MPI_CHAR,&count);
+      int number_bytes = sizeof(char)*count;
 
-    ParallelFileMerger *info = (ParallelFileMerger*)mergers.FindObject(fMPIFilename);
-    if(!info){
-      info = new ParallelFileMerger(fMPIFilename,cache);
-      mergers.Add(info);
-    }
-    if(R__NeedInitialMerge(infile)){
+      // create buffer to receive message
+      char *buf = new char[number_bytes];
+      int source = status.MPI_SOURCE;
+      int tag = status.MPI_TAG;
 
-      info->InitialMerge(infile);
+      if(number_bytes==0){
+         //empty buffer is a worker's last send request....
+         this->UpdateEndProcess();
+         MPI_Recv(buf,number_bytes,MPI_CHAR,source,tag,comm,MPI_STATUS_IGNORE); 
+      }
+      else{
 
-    }
-    info->RegisterClient(client_Id,infile);
-    auto midway = std::chrono::high_resolution_clock::now();
-    info->Merge();
-    infile = 0;
+         MPI_Recv(buf,number_bytes,MPI_CHAR,source,tag,comm,MPI_STATUS_IGNORE); 
 
-    //TODO: this second merge seems not necessary
-    //TIter next(&mergers);
-    //while((info = (ParallelFileMerger*)next()))
-	//info->Merge();
+         auto start = std::chrono::high_resolution_clock::now();
 
-    counter=counter+1;
+         Int_t client_Id =counter-1; 
+         TMemFile *infile = new TMemFile(fMPIFilename,buf,number_bytes,"UPDATE");
 
-    auto end = std::chrono::high_resolution_clock::now();
-    double init_time = std::chrono::duration_cast<std::chrono::duration<double>> (midway - start).count();
-    double merge_time = std::chrono::duration_cast<std::chrono::duration<double>> (end - midway).count();
-    msg = "Init overhead: ";
-    msg += std::to_string(init_time);
-    msg += "\tMerge overhead: ";
-    msg += std::to_string(merge_time);
-    msg += "\tBuffer received: ";
-    msg += std::to_string(number_bytes);
-    Info("Collector", msg.c_str());
-  }
-   delete [] buf;
-  }
-  if(fEndProcess==size-1){
-    mergers.Delete();
-    return;
-  }
+         std::string msg;
+         ////////////////////// Print debug information
+         // TTree *tree = (TTree *) infile->Get("tree");
+         // JetEvent *event = new JetEvent;
+         // tree->SetBranchAddress("event", &event);
+         // for (int i = 0; i < tree->GetEntries(); ++i) {
+         //     tree->GetEntry(i);
+         //     msg = "Jets: ";
+         //     msg += std::to_string(event->GetNjet());
+         //     msg += "\tTracks: ";
+         //     msg += std::to_string(event->GetNtrack());
+         //     msg += "\tHitsA: ";
+         //     msg += std::to_string(event->GetNhitA());
+         //     msg += "\tHitsB: ";
+         //     msg += std::to_string(event->GetNhitB());
+         //     Info("ReceiveAndMerge()", msg.c_str());
+         // }
+         ////////////////////// End of print
+
+         ParallelFileMerger *info = (ParallelFileMerger*)mergers.FindObject(fMPIFilename);
+         auto infoA = std::chrono::high_resolution_clock::now();
+         if(!info){
+            info = new ParallelFileMerger(fMPIFilename,cache);
+            mergers.Add(info);
+         }
+         auto infoB = std::chrono::high_resolution_clock::now();
+         auto infoBB = std::chrono::high_resolution_clock::now();
+         if(R__NeedInitialMerge(infile)){
+            infoBB = std::chrono::high_resolution_clock::now();
+            Info("ReceiveAndMerge"," I am here");
+            info->InitialMerge(infile);
+
+         }
+         auto infoC = std::chrono::high_resolution_clock::now();
+
+         info->RegisterClient(client_Id,infile);
+         auto midway = std::chrono::high_resolution_clock::now();
+         info->Merge();
+         infile = 0;
+
+         //TODO: this second merge seems not necessary
+         //TIter next(&mergers);
+         //while((info = (ParallelFileMerger*)next()))
+         //info->Merge();
+
+         counter=counter+1;
+
+         auto end = std::chrono::high_resolution_clock::now();
+         double infoA_time = std::chrono::duration_cast<std::chrono::duration<double>> (infoA - start).count();
+         double infoB_time = std::chrono::duration_cast<std::chrono::duration<double>> (infoB - infoA).count();
+         double infoBB_time = std::chrono::duration_cast<std::chrono::duration<double>> (infoBB - infoB).count();
+         double infoC_time = std::chrono::duration_cast<std::chrono::duration<double>> (infoC - infoBB).count();
+         double init_time = std::chrono::duration_cast<std::chrono::duration<double>> (midway - infoC).count();
+         double merge_time = std::chrono::duration_cast<std::chrono::duration<double>> (end - midway).count();
+         msg = "infoA overhead: ";
+         msg += std::to_string(infoA_time);
+         msg += "\tinfoB overhead: ";
+         msg += std::to_string(infoB_time);
+         msg += "\tinfoBB overhead: ";
+         msg += std::to_string(infoBB_time);
+         msg += "\tinfoC overhead: ";
+         msg += std::to_string(infoC_time);
+         msg += "\tInit overhead: ";
+         msg += std::to_string(init_time);
+         msg += "\tMerge overhead: ";
+         msg += std::to_string(merge_time);
+         msg += "\tBuffer received: ";
+         msg += std::to_string(number_bytes);
+         Info("Collector", msg.c_str());
+      }
+      delete [] buf;
+   }
+   if(fEndProcess==size-1){
+      mergers.Delete();
+      return;
+   }
 }
 
 
 Bool_t TMPIFile::R__NeedInitialMerge(TDirectory *dir)
 {
-  if (dir==0) return kFALSE;
-  TIter nextkey(dir->GetListOfKeys());
-  TKey *key;
-  while( (key = (TKey*)nextkey()) ) {
-    TClass *cl = TClass::GetClass(key->GetClassName());
-    const char *classname = key->GetClassName();
-    if (cl->InheritsFrom(TDirectory::Class())) {
-      TDirectory *subdir = (TDirectory *)dir->GetList()->FindObject(key->GetName());
-      if (!subdir) {
-	subdir = (TDirectory *)key->ReadObj();
+   Info("R__NeedInitialMerge","start");
+   if (dir==0) return kFALSE;
+   TIter nextkey(dir->GetListOfKeys());
+   TKey *key;
+   while( (key = (TKey*)nextkey()) ) {
+      TClass *cl = TClass::GetClass(key->GetClassName());
+      const char *classname = key->GetClassName();
+      Info("R__NeedInitialMerge","classname = %s",classname);
+      if (cl->InheritsFrom(TDirectory::Class())) {
+         TDirectory *subdir = (TDirectory *)dir->GetList()->FindObject(key->GetName());
+         if (!subdir) {
+            subdir = (TDirectory *)key->ReadObj();
+         }
+         if (R__NeedInitialMerge(subdir)) {
+            return kTRUE;
+         }
+      } else {
+         if (0 != cl->GetResetAfterMerge()) {
+            return kTRUE;
+         }
       }
-      if (R__NeedInitialMerge(subdir)) {
-	return kTRUE;
-      }
-    } else {
-      if (0 != cl->GetResetAfterMerge()) {
-	return kTRUE;
-      }
-    }
-  }
-  return kFALSE;
+   }
+   return kFALSE;
 }
 
 TMPIFile::ParallelFileMerger::ParallelFileMerger(const char *filename,Bool_t writeCache):fFilename(filename),fClientsContact(0),fMerger(kFALSE,kTRUE)
@@ -282,15 +311,17 @@ ULong_t TMPIFile::ParallelFileMerger::Hash()const{
 const char *TMPIFile::ParallelFileMerger::GetName()const{
   return fFilename;
 }
+
 Bool_t TMPIFile::ParallelFileMerger::InitialMerge(TFile *input)
 {
-      // Initial merge of the input to copy the resetable object (TTree) into the output
-      // and remove them from the input file.
-  fMerger.AddFile(input);
-  Bool_t result = fMerger.PartialMerge(TFileMerger::kIncremental | TFileMerger::kResetable);
-  tcl.R__DeleteObject(input,kTRUE);
-  return result;
+   // Initial merge of the input to copy the resetable object (TTree) into the output
+   // and remove them from the input file.
+   fMerger.AddFile(input);
+   Bool_t result = fMerger.PartialMerge(TFileMerger::kIncremental | TFileMerger::kResetable);
+   tcl.R__DeleteObject(input,kTRUE);
+   return result;
 }
+
 Bool_t TMPIFile::ParallelFileMerger::Merge()
 {
   auto start = std::chrono::high_resolution_clock::now();
