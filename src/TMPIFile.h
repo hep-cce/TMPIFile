@@ -52,7 +52,7 @@ private:
    ClientColl_t fClients;
    TTimeStamp fLastMerge;
    TFileMerger fMerger;
-   ParallelFileMerger(const char *filename,Bool_t writeCache=kFALSE);
+   ParallelFileMerger(const char *filename, Int_t compression_settings, Bool_t writeCache=kFALSE);
    virtual ~ParallelFileMerger();
    ULong_t Hash() const;
    const char *GetName()const;
