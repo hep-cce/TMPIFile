@@ -184,11 +184,13 @@ void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
 
          Int_t client_Id =counter-1; 
          TMemFile *infile = new TMemFile(fMPIFilename,buf,number_bytes,"UPDATE");
+	 if (infile->IsZombie()) exit(1);
+	 infile->SetCompressionSettings(this->GetCompressionSettings());
 
          std::string msg;
          ////////////////////// Print debug information
          // TTree *tree = (TTree *) infile->Get("tree");
-         // JetEvent *event = new JetEvent;
+         // JetEvent *event = new Jetthis->GetCompressionSettings()Event;
          // tree->SetBranchAddress("event", &event);
          // for (int i = 0; i < tree->GetEntries(); ++i) {
          //     tree->GetEntry(i);
@@ -207,7 +209,7 @@ void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
          ParallelFileMerger *info = (ParallelFileMerger*)mergers.FindObject(fMPIFilename);
          auto infoA = std::chrono::high_resolution_clock::now();
          if(!info){
-            info = new ParallelFileMerger(fMPIFilename,cache);
+            info = new ParallelFileMerger(fMPIFilename,this->GetCompressionSettings(),cache);
             mergers.Add(info);
          }
          auto infoB = std::chrono::high_resolution_clock::now();
@@ -291,10 +293,11 @@ Bool_t TMPIFile::R__NeedInitialMerge(TDirectory *dir)
    return kFALSE;
 }
 
-TMPIFile::ParallelFileMerger::ParallelFileMerger(const char *filename,Bool_t writeCache):fFilename(filename),fClientsContact(0),fMerger(kFALSE,kTRUE)
+TMPIFile::ParallelFileMerger::ParallelFileMerger(const char *filename, Int_t compression_settings, Bool_t writeCache):fFilename(filename),fClientsContact(0),fMerger(kFALSE,kTRUE)
 {
   fMerger.SetPrintLevel(0);
-  fMerger.OutputFile(filename,"RECREATE");
+  if( ! fMerger.OutputFile(filename,"RECREATE") ) exit(1);
+  fMerger.GetOutputFile()->SetCompressionSettings(compression_settings);
   if(writeCache)new TFileCacheWrite(fMerger.GetOutputFile(),32*1024*1024);
 
 }
@@ -317,7 +320,7 @@ Bool_t TMPIFile::ParallelFileMerger::InitialMerge(TFile *input)
    // Initial merge of the input to copy the resetable object (TTree) into the output
    // and remove them from the input file.
    fMerger.AddFile(input);
-   Bool_t result = fMerger.PartialMerge(TFileMerger::kIncremental | TFileMerger::kResetable);
+   Bool_t result = fMerger.PartialMerge(TFileMerger::kIncremental | TFileMerger::kResetable | TFileMerger::kKeepCompression);
    tcl.R__DeleteObject(input,kTRUE);
    return result;
 }
@@ -329,7 +332,7 @@ Bool_t TMPIFile::ParallelFileMerger::Merge()
   for(unsigned int f = 0; f<fClients.size();++f){
     fMerger.AddFile(fClients[f].fFile);
   }
-  Bool_t result = fMerger.PartialMerge(TFileMerger::kAllIncremental);
+  Bool_t result = fMerger.PartialMerge(TFileMerger::kAllIncremental | TFileMerger::kKeepCompression);
   // Remove any 'resetable' object (like TTree) from the input file so that they will not
   // be re-merged.  Keep only the object that always need to be re-merged (Histograms).
   for(unsigned int f = 0 ; f < fClients.size(); ++f) {
@@ -338,6 +341,7 @@ Bool_t TMPIFile::ParallelFileMerger::Merge()
     } else {
       // We back up the file (probably due to memory constraint)
       TFile *file = TFile::Open(fClients[f].fLocalName,"UPDATE");
+      if (file->IsZombie()) exit(1);
       tcl.R__DeleteObject(file,kTRUE); // Remove object that can be incrementally merge and will be reset by the client code.
       file->Write();
       delete file;
@@ -482,7 +486,7 @@ void TMPIFile::CreateBufferAndSend(bool cache,MPI_Comm comm)
   MPI_Comm_rank(comm,&rank);
   MPI_Comm_size(comm,&size);
   if(rank==0)return;
-  int count =  this->GetSize();
+  int count =  this->GetEND();
   fSendBuf = new char[count];
   this->CopyTo(fSendBuf,count); 
   MPI_Isend(fSendBuf,count,MPI_CHAR,0,fColor,comm,&fRequest);
