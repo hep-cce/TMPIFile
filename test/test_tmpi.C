@@ -35,6 +35,10 @@ void test_tmpi(){
     Int_t events_per_rank = 50; // events each rank will produce
     Int_t sleep_mean = 5; // typical KNL node produces 0.1 evt / sec / node
     Int_t sleep_sigma = 2;
+    Int_t jetm=50;
+    Int_t trackm=60;
+    Int_t hitam=200;
+    Int_t hitbm=100;
 
     std::string mpifname("merged_output_");
     mpifname += std::to_string(getpid());
@@ -55,7 +59,7 @@ void test_tmpi(){
         for(int i=0;i<events_per_rank;i++){
             auto start = std::chrono::high_resolution_clock::now();
             // std::cout<<"Event "<<i<<" local rank "<<newfile->GetMPILocalRank()<< std::endl;
-            event->Build();
+            event->Build(jetm,trackm,hitam,hitbm);
             auto evt_built = std::chrono::high_resolution_clock::now();
             double build_time = std::chrono::duration_cast<std::chrono::duration<double>> (evt_built - start).count();
             std::cout << "[" << newfile->GetMPILocalRank() << "] evt = "<< i <<"; build_time = " << build_time << std::endl;
