@@ -12,6 +12,9 @@ endif()
 # ROOT
 find_package(ROOT REQUIRED)
 
+# No RPATH build
+set(CMAKE_SKIP_BUILD_RPATH  TRUE)
+
 # Set the install path if not set by -DCMAKE_INSTALL_PREFIX=...
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR} CACHE PATH "Install path" FORCE )
