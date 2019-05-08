@@ -24,10 +24,7 @@ endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 message(STATUS "C++ compiler is : ${CMAKE_CXX_COMPILER}")
 message(STATUS "C++ compiler identification is : ${CMAKE_CXX_COMPILER_ID}")
 
-set(CMAKE_CXX_COMPILE_FLAGS "-Wall -Wextra -std=c++11 -g")
-
-set(CMAKE_CXX_COMPILE_FLAGS ${CMAKE_CXX_COMPILE_FLAGS} ${MPI_COMPILE_FLAGS})
-set(CMAKE_CXX_LINK_FLAGS ${CMAKE_CXX_LINK_FLAGS} ${MPI_LINK_FLAGS})
+set(CMAKE_CXX_FLAGS "-Wshadow -Wall -W -Woverloaded-virtual -fsigned-char -Wextra -std=c++14 -g")
 
 add_subdirectory(src)
 add_subdirectory(test)

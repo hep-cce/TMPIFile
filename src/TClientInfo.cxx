@@ -40,7 +40,6 @@ void TClientInfo::Set(TFile *file){
   {
     // Register the new file as coming from this client.
     if (file != fFile) {
-     const char* name = file->GetName();
       if (fFile) {
 	R__MigrateKey(fFile,file);
 	// delete the previous memory file (if any)

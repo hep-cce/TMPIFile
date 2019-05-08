@@ -60,7 +60,6 @@ TMPIFile::TMPIFile(const char *name, char *buffer, Long64_t size,
       }
       int tot = global_size/split;
       if(global_size%split!=0){
-         int n = global_size%split;
          tot=tot+1;
          fColor = global_rank/tot;
          row_comm = SplitMPIComm(MPI_COMM_WORLD,tot);
@@ -91,7 +90,6 @@ TMPIFile::TMPIFile(const char *name,Option_t *option,Int_t split,const char *fti
       }
       int tot = global_size/split;
       if(global_size%split!=0){
-         int n = global_size%split;
          tot=tot+1;
          fColor = global_rank/tot;
          row_comm = SplitMPIComm(MPI_COMM_WORLD,tot);
@@ -114,7 +112,6 @@ TMPIFile::~TMPIFile(){
 //Function to allocate number of Allocators
 MPI_Comm TMPIFile::SplitMPIComm(MPI_Comm source, int comm_no){
    int source_rank,source_size;
-   MPI_Comm row_comm;
    MPI_Comm_rank(source,&source_rank);
    MPI_Comm_size(source,&source_size);
    if(comm_no>source_size){
@@ -146,11 +143,11 @@ void TMPIFile::RunCollector(bool cache)
    msg += std::to_string(getpid());
    // Info("Collector", msg.c_str());
 
-   ReceiveAndMerge(cache,row_comm,rank,size);
+   ReceiveAndMerge(cache,row_comm,size);
 }
 
 //*******************Collector's main function*******************888
-void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int rank,int size){
+void TMPIFile::ReceiveAndMerge(bool cache,MPI_Comm comm,int size){
    this->GetRootName();
    THashTable mergers;
    int counter=1;
@@ -273,7 +270,6 @@ Bool_t TMPIFile::R__NeedInitialMerge(TDirectory *dir)
    TKey *key;
    while( (key = (TKey*)nextkey()) ) {
       TClass *cl = TClass::GetClass(key->GetClassName());
-      const char *classname = key->GetClassName();
       // Info("R__NeedInitialMerge","classname = %s",classname);
       if (cl->InheritsFrom(TDirectory::Class())) {
          TDirectory *subdir = (TDirectory *)dir->GetList()->FindObject(key->GetName());
@@ -477,10 +473,9 @@ Bool_t TMPIFile::IsCollector(){
 //*************************END OF MASTERS' FUNCTIONS******************//
 
 //**************************START OF WORKER'S FUNCTIONS******************//
-void TMPIFile::CreateBufferAndSend(bool cache,MPI_Comm comm)
+void TMPIFile::CreateBufferAndSend(MPI_Comm comm)
 {
    int rank,size;
-   const char* _filename = this->GetName();
    this->Write();
    MPI_Comm_rank(comm,&rank);
    MPI_Comm_size(comm,&size);
@@ -489,12 +484,9 @@ void TMPIFile::CreateBufferAndSend(bool cache,MPI_Comm comm)
    fSendBuf = new char[count];
    this->CopyTo(fSendBuf,count); 
    MPI_Isend(fSendBuf,count,MPI_CHAR,0,fColor,comm,&fRequest);
-   // std::string msg = "Buffer sent: ";
-   // msg += std::to_string(count);
-   // Info("CreateBufferAndSend()", msg.c_str());
-
 }
-void TMPIFile::CreateEmptyBufferAndSend(bool cache,MPI_Comm comm)
+
+void TMPIFile::CreateEmptyBufferAndSend(MPI_Comm comm)
 {
    int rank,size;
    MPI_Comm_rank(comm,&rank);
@@ -518,13 +510,13 @@ void TMPIFile::CreateEmptyBufferAndSend(bool cache,MPI_Comm comm)
 
 
 //Synching defines the communication method between worker/collector
-void TMPIFile::Sync(bool cache){
+void TMPIFile::Sync(){
    int rank,size;
    MPI_Comm_rank(row_comm,&rank);
    MPI_Comm_size(row_comm,&size);
    //check if the previous send request is accepted by master.
    if(!fRequest){//if accpeted create and send current batch
-      CreateBufferAndSend(cache,row_comm);
+      CreateBufferAndSend(row_comm);
    }
    else{
       //if not accepted wait until received by master
@@ -537,16 +529,16 @@ void TMPIFile::Sync(bool cache){
       if(fRequest) delete[] fSendBuf; //empty the buffer once received by master
       //Reset the frequest once accepted by master and send new buffer
       fRequest=0; 
-      CreateBufferAndSend(cache,row_comm);
+      CreateBufferAndSend(row_comm);
    }
    this->ResetAfterMerge((TFileMergeInfo*)0);
 }
 
-void TMPIFile::MPIClose(bool cache){
+void TMPIFile::MPIClose(){
    int rank,size;
    MPI_Comm_rank(row_comm,&rank);
    MPI_Comm_size(row_comm,&size);
-   CreateEmptyBufferAndSend(cache,row_comm);
+   CreateEmptyBufferAndSend(row_comm);
    //workers need to wait other workers to reach the end of job.....
    // MPI_Barrier(row_comm); //maybe we dont need barrier
    //okay once they reach the buffer...just close it.
@@ -559,7 +551,7 @@ void TMPIFile::GetRootName()
 {
    std::string _filename = this->GetName();
 
-   int found = _filename.rfind(".root");
+   long unsigned found = _filename.rfind(".root");
    if(found != std::string::npos)_filename.resize(found);
    const char* _name = _filename.c_str();
    sprintf(fMPIFilename,"%s_%d.root",_name,fColor);
