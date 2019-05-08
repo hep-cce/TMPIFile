@@ -28,9 +28,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-
-void test_tmpi(int argc,char* argv[]){
-
+void test_tmpi(int argc, char* argv[]){
 
    Int_t N_collectors = 1; //specify how many collectors to receive the message
    Int_t sync_rate = 10; //events per send request by the worker
@@ -57,7 +55,6 @@ void test_tmpi(int argc,char* argv[]){
       ;
 
    auto opts = optparse.parse(argc,argv);
-
 
    std::string mpifname("/tmp/merged_output_");
    mpifname += std::to_string(getpid());

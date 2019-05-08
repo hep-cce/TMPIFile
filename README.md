@@ -11,6 +11,8 @@ This project builds a TFile-like object that uses MPI (Message Passing Interface
 
 [CMake](https://cmake.org/) 3.2 or higher
 
+The "tmpi" container is available on [dockerhub](https://hub.docker.com/r/pointkernel/tmpi)
+
 ## INSTALLATION
 The following instructions assume the user has already built/installed ROOT, MPICH, and CMake in the machine.
 
