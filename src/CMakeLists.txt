@@ -12,6 +12,7 @@ set( ${PROJECT_NAME}_HEADERS
         TClientInfo.h
         JetEvent.h
         TMPIFile.h
+	cxxopts.hpp
 )
 
 set( ${PROJECT_NAME}_SRCS
