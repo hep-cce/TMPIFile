@@ -328,7 +328,7 @@ TMPIFile::ParallelFileMerger::ParallelFileMerger(const char *filename,
 TMPIFile::ParallelFileMerger::~ParallelFileMerger() {
   for (ClientColl_t::iterator iter = fClients.begin(); iter != fClients.end();
        ++iter)
-    delete iter->fFile;
+    delete iter->GetFile();
 }
 ULong_t TMPIFile::ParallelFileMerger::Hash() const { return fFilename.Hash(); }
 const char *TMPIFile::ParallelFileMerger::GetName() const { return fFilename; }
@@ -351,7 +351,7 @@ Bool_t TMPIFile::ParallelFileMerger::Merge() {
       kFALSE); // removing object that cannot be incrementally merged and will
                // not be reset by the client code..
   for (unsigned int f = 0; f < fClients.size(); ++f) {
-    fMerger.AddFile(fClients[f].fFile);
+    fMerger.AddFile(fClients[f].GetFile());
   }
   Bool_t result = fMerger.PartialMerge(TFileMerger::kAllIncremental |
                                        TFileMerger::kKeepCompression);
@@ -359,11 +359,11 @@ Bool_t TMPIFile::ParallelFileMerger::Merge() {
   // will not be re-merged.  Keep only the object that always need to be
   // re-merged (Histograms).
   for (unsigned int f = 0; f < fClients.size(); ++f) {
-    if (fClients[f].fFile) {
-      tcl.R__DeleteObject(fClients[f].fFile, kTRUE);
+    if (fClients[f].GetFile()) {
+      tcl.R__DeleteObject(fClients[f].GetFile(), kTRUE);
     } else {
       // We back up the file (probably due to memory constraint)
-      TFile *file = TFile::Open(fClients[f].fLocalName, "UPDATE");
+      TFile *file = TFile::Open(fClients[f].GetLocalName(), "UPDATE");
       if (file->IsZombie())
         exit(1);
       tcl.R__DeleteObject(file,
@@ -393,7 +393,7 @@ void TMPIFile::ParallelFileMerger::RegisterClient(UInt_t clientID,
   if (fClients.size() < clientID + 1) {
     fClients.push_back(ntcl);
   }
-  fClients[clientID].Set(file);
+  fClients[clientID].SetFile(file);
 }
 
 Bool_t TMPIFile::ParallelFileMerger::NeedMerge(Float_t clientThreshold) {
@@ -409,9 +409,9 @@ Bool_t TMPIFile::ParallelFileMerger::NeedMerge(Float_t clientThreshold) {
   Double_t sum = 0;
   Double_t sum2 = 0;
   for (unsigned int c = 0; c < fClients.size(); ++c) {
-    sum += fClients[c].fTimeSincePrevContact;
+    sum += fClients[c].GetTimeSincePrevContact();
     sum2 +=
-        fClients[c].fTimeSincePrevContact * fClients[c].fTimeSincePrevContact;
+        fClients[c].GetTimeSincePrevContact() * fClients[c].GetTimeSincePrevContact();
   }
   Double_t avg = sum / fClients.size();
   Double_t sigma = sum2 ? TMath::Sqrt(sum2 / fClients.size() - avg * avg) : 0;
