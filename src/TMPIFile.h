@@ -1,6 +1,3 @@
-
-// A TMemFile that utilizes MPI Libraries to create and Merge ROOT Files
-
 // @(#)root/io:$Id$
 // Author: Amit Bashyal, August 2018
 
@@ -15,28 +12,24 @@
 #ifndef ROOT_TMPIFile
 #define ROOT_TMPIFile
 
-#include "TBits.h"
 #include "TClientInfo.h"
+#include "TBits.h"
 #include "TFileMerger.h"
-#include "TKey.h"
 #include "TMemFile.h"
 
 #include "mpi.h"
 
-#include <memory>
 #include <vector>
 
 class TMPIFile : public TMemFile {
-public:
+
+private:
   int argc;
   char **argv;
   MPI_Comm row_comm;
   char fMPIFilename[1000];
   int fColor;
-
-private:
   Int_t fEndProcess = 0;
-  void UpdateEndProcess(); // update how many workers reached end of job
   MPI_Request fRequest = 0;
   char *fSendBuf = 0; // Workers' message buffer
   Int_t fSplitLevel;
@@ -44,7 +37,7 @@ private:
   struct ParallelFileMerger : public TObject {
   public:
     // implemented from $ROOTSYS/tutorials/net/parallelMergeServer.C
-    typedef std::vector<TClientInfo> ClientColl_t;
+    using ClientColl_t = std::vector<TClientInfo>;
     TString fFilename;
     TBits fClientsContact;
     UInt_t fNClientsContact;
@@ -66,6 +59,7 @@ private:
   MPI_Comm SplitMPIComm(MPI_Comm source,
                         int comm_no); //<Divides workers per master
   void GetRootName();
+  void UpdateEndProcess(); // update how many workers reached end of job
 
 public:
   TMPIFile(const char *name, char *buffer, Long64_t size = 0,

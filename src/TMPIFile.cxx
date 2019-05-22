@@ -9,32 +9,13 @@
  * For the list of contributors see $ROOTSYS/README/CREDITS.             *
  *************************************************************************/
 
-/**
-\class TMPIFile TMPIFile.cxx
-\ingroup IO <-----------------NOT YET IMPLEMENTED------------>
-
-A TMPIFile uses TMemFile to create and merge rootfiles into a single TFile and
-writein a disk using MPI (Message Passing Interface) functionalities.
-*/
-
 #include "TMPIFile.h"
-#include "JetEvent.h"
-#include "TArrayC.h"
-#include "TClass.h"
-#include "TError.h"
 #include "TFileCacheWrite.h"
-#include "TH1D.h"
 #include "TKey.h"
 #include "TMath.h"
-#include "TMemFile.h"
-#include "TROOT.h"
-#include "TSystem.h"
-#include "TTree.h"
-#include "TVirtualMutex.h"
 
 #include <chrono>
 #include <iostream>
-#include <sstream>
 #include <string>
 
 ClassImp(TMPIFile);
