@@ -23,8 +23,7 @@ ClassImp(TMPIFile);
 TMPIFile::TMPIFile(const char *name, char *buffer, Long64_t size,
                    Option_t *option, Int_t split, const char *ftitle,
                    Int_t compress)
-    : TMemFile(name, buffer, size, option, ftitle, compress), fColor(0),
-      fRequest(0), fSendBuf(0), fSplitLevel(split) {
+    : TMemFile(name, buffer, size, option, ftitle, compress), fSplitLevel(split), fColor(0), fRequest(0), fSendBuf(0) {
 
   // Initialize MPI if it is not already initialized...
   Int_t flag;
@@ -62,8 +61,7 @@ TMPIFile::TMPIFile(const char *name, char *buffer, Long64_t size,
 
 TMPIFile::TMPIFile(const char *name, Option_t *option, Int_t split,
                    const char *ftitle, Int_t compress)
-    : TMemFile(name, option, ftitle, compress), fColor(0), fRequest(0),
-      fSendBuf(0), fSplitLevel(split) {
+    : TMemFile(name, option, ftitle, compress), fSplitLevel(split), fColor(0), fRequest(0), fSendBuf(0) {
   Int_t flag;
   MPI_Initialized(&flag);
   if (!flag)

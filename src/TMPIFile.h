@@ -25,14 +25,16 @@ class TMPIFile : public TMemFile {
 
 private:
   Int_t argc;
-  char **argv;
-  MPI_Comm row_comm;
-  char fMPIFilename[1000];
-  Int_t fColor;
   Int_t fEndProcess = 0;
-  MPI_Request fRequest = 0;
-  char *fSendBuf = 0; // Workers' message buffer
   Int_t fSplitLevel;
+  Int_t fColor;
+
+  MPI_Comm row_comm;
+  MPI_Request fRequest = 0;
+
+  char **argv;
+  char fMPIFilename[1000];
+  char *fSendBuf = 0; // Workers' message buffer
 
   struct ParallelFileMerger : public TObject {
   public:
@@ -59,7 +61,9 @@ private:
     
     TClientInfo tcl;
   };
+
   MPI_Comm SplitMPIComm(MPI_Comm source, Int_t comm_no); //<Divides workers per master
+  
   void GetRootName();
   void UpdateEndProcess(); // update how many workers reached end of job
 
