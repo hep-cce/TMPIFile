@@ -62,7 +62,7 @@ private:
     TClientInfo tcl;
   };
 
-  MPI_Comm SplitMPIComm(MPI_Comm source, Int_t comm_no); //<Divides workers per master
+  MPI_Comm SplitMPIComm(Int_t num_comm); //<Divides workers per master
   
   void GetRootName();
   void UpdateEndProcess(); // update how many workers reached end of job
@@ -73,19 +73,19 @@ public:
   virtual ~TMPIFile();
 
   // some functions on MPI information
-  Int_t GetMPILocalSize();
-  Int_t GetMPILocalRank();
-  Int_t GetMPIColor();
-  Int_t GetMPIGlobalRank();
-  Int_t GetSplitLevel();
-  Int_t GetMPIGlobalSize();
+  Int_t GetMPILocalSize() const;
+  Int_t GetMPILocalRank() const;
+  Int_t GetMPIColor() const;
+  Int_t GetMPIGlobalRank() const;
+  Int_t GetSplitLevel() const;
+  Int_t GetMPIGlobalSize() const;
 
   // Master Functions
-  void RunCollector(Bool_t cache = false);
+  void RunCollector(Bool_t cache = kFALSE);
   void R__MigrateKey(TDirectory *destination, TDirectory *source);
   void R__DeleteObject(TDirectory *dir, Bool_t withReset);
   Bool_t R__NeedInitialMerge(TDirectory *dir);
-  void ReceiveAndMerge(Bool_t cache = false, MPI_Comm = 0, Int_t size = 0);
+  void ReceiveAndMerge(Bool_t cache = kFALSE, MPI_Comm = 0, Int_t size = 0);
   Bool_t IsCollector();
 
   // Worker Functions

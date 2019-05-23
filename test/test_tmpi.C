@@ -98,15 +98,11 @@ void test_tmpi(int argc, char *argv[]) {
     // total number of entries
     for (int i = 0; i < events_per_rank; i++) {
       auto start = std::chrono::high_resolution_clock::now();
-      // std::cout<<"Event "<<i<<" local rank "<<newfile->GetMPILocalRank()<<
-      // std::endl;
       event->Build(jetm, trackm, hitam, hitbm);
       auto evt_built = std::chrono::high_resolution_clock::now();
-      double build_time =
-          std::chrono::duration_cast<std::chrono::duration<double>>(evt_built -
-                                                                    start)
-              .count();
-      std::cout << "[" << newfile->GetMPILocalRank() << "] evt = " << i
+      double build_time = std::chrono::duration_cast<std::chrono::duration<double>>(evt_built - start).count();
+      std::cout << "[" << newfile->GetMPIColor() << "] "
+                << "[" << newfile->GetMPILocalRank() << "] evt = " << i
                 << "; build_time = " << build_time << std::endl;
       auto adjusted_sleep = (int)(sleep_mean - build_time);
       auto sleep = abs(gRandom->Gaus(adjusted_sleep, sleep_sigma));
@@ -116,27 +112,21 @@ void test_tmpi(int argc, char *argv[]) {
       tree->Fill();
 
       // at the end of the event loop...put the sync function
-      //************START OF SYNCING IMPLEMENTATION FROM USERS'
-      //SIDE**********************
       if ((i + 1) % sync_rate == 0) {
         newfile->Sync(); // this one as a worker...
 
         auto end = std::chrono::high_resolution_clock::now();
-        double sync_time =
-            std::chrono::duration_cast<std::chrono::duration<double>>(
-                end - sync_start)
-                .count();
-        std::cout << "[" << newfile->GetMPILocalRank()
+        double sync_time = std::chrono::duration_cast<std::chrono::duration<double>>(end - sync_start).count();
+        std::cout << "[" << newfile->GetMPIColor() << "] "
+                  << "[" << newfile->GetMPILocalRank()
                   << "] event collection time: " << sync_time << std::endl;
         sync_start = std::chrono::high_resolution_clock::now();
       }
     }
     // do the syncing one more time
-    if (events_per_rank % sync_rate != 0)
+    if (events_per_rank % sync_rate != 0) {
       newfile->Sync();
-
-    //************END OF SYNCING IMPLEMENTATION FROM USERS'
-    //SIDE***********************
+    }
   }
   newfile->MPIClose();
 }
