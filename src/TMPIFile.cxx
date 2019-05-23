@@ -27,11 +27,11 @@ TMPIFile::TMPIFile(const char *name, char *buffer, Long64_t size,
       fRequest(0), fSendBuf(0), fSplitLevel(split) {
 
   // Initialize MPI if it is not already initialized...
-  int flag;
+  Int_t flag;
   MPI_Initialized(&flag);
   if (!flag)
     MPI_Init(&argc, &argv);
-  int global_size, global_rank;
+  Int_t global_size, global_rank;
 
   MPI_Comm_size(MPI_COMM_WORLD, &global_size);
   MPI_Comm_rank(MPI_COMM_WORLD, &global_rank);
@@ -45,7 +45,7 @@ TMPIFile::TMPIFile(const char *name, char *buffer, Long64_t size,
                split, 2 * split, global_size);
       exit(1);
     }
-    int tot = global_size / split;
+    Int_t tot = global_size / split;
     if (global_size % split != 0) {
       tot = tot + 1;
       fColor = global_rank / tot;
@@ -64,11 +64,11 @@ TMPIFile::TMPIFile(const char *name, Option_t *option, Int_t split,
                    const char *ftitle, Int_t compress)
     : TMemFile(name, option, ftitle, compress), fColor(0), fRequest(0),
       fSendBuf(0), fSplitLevel(split) {
-  int flag;
+  Int_t flag;
   MPI_Initialized(&flag);
   if (!flag)
     MPI_Init(&argc, &argv);
-  int global_size, global_rank;
+  Int_t global_size, global_rank;
   MPI_Comm_size(MPI_COMM_WORLD, &global_size);
   MPI_Comm_rank(MPI_COMM_WORLD, &global_rank);
   if (split != 0) {
@@ -81,7 +81,7 @@ TMPIFile::TMPIFile(const char *name, Option_t *option, Int_t split,
                split, 2 * split, global_size);
       exit(1);
     }
-    int tot = global_size / split;
+    Int_t tot = global_size / split;
     if (global_size % split != 0) {
       tot = tot + 1;
       fColor = global_rank / tot;
@@ -100,24 +100,24 @@ TMPIFile::~TMPIFile() {
   fRequest = 0;
 }
 // Function to allocate number of Allocators
-MPI_Comm TMPIFile::SplitMPIComm(MPI_Comm source, int comm_no) {
-  int source_rank, source_size;
+MPI_Comm TMPIFile::SplitMPIComm(MPI_Comm source, Int_t comm_no) {
+  Int_t source_rank, source_size;
   MPI_Comm_rank(source, &source_rank);
   MPI_Comm_size(source, &source_size);
   if (comm_no > source_size) {
     SysError("TMPIFile", "number of sub communicators larger than mother size");
     exit(1);
   }
-  int color = source_rank / comm_no;
+  Int_t color = source_rank / comm_no;
   MPI_Comm_split(source, color, source_rank, &row_comm);
   return row_comm;
 }
 
 void TMPIFile::UpdateEndProcess() { fEndProcess = fEndProcess + 1; }
 
-void TMPIFile::RunCollector(bool cache) {
+void TMPIFile::RunCollector(Bool_t cache) {
   // by this time, MPI should be initialized...
-  int rank, size;
+  Int_t rank, size;
   MPI_Comm_rank(row_comm, &rank);
   MPI_Comm_size(row_comm, &size);
 
@@ -131,9 +131,9 @@ void TMPIFile::RunCollector(bool cache) {
 void TMPIFile::ReceiveAndMerge(Bool_t cache, MPI_Comm comm, Int_t size) {
   this->GetRootName();
   THashTable mergers;
-  int counter = 1;
+  Int_t counter = 1;
 
-  int msg_received = 0;
+  Int_t msg_received = 0;
   auto run_start = std::chrono::high_resolution_clock::now();
 
   std::cout << "CCT run time\t probe time\t merge time\t buffer size (MB)\t "
@@ -160,14 +160,14 @@ void TMPIFile::ReceiveAndMerge(Bool_t cache, MPI_Comm comm, Int_t size) {
     timing_msg << "CCT " << run_time << "\t" << probe_time;
 
     // get bytes received
-    int count;
+    Int_t count;
     MPI_Get_count(&status, MPI_CHAR, &count);
-    int number_bytes = sizeof(char) * count;
+    Int_t number_bytes = sizeof(char) * count;
 
     // create buffer to receive message
     char *buf = new char[number_bytes];
-    int source = status.MPI_SOURCE;
-    int tag = status.MPI_TAG;
+    Int_t source = status.MPI_SOURCE;
+    Int_t tag = status.MPI_TAG;
 
     if (number_bytes == 0) {
       // empty buffer is a worker's last send request....

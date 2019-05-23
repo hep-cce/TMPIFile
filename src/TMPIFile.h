@@ -59,7 +59,7 @@ private:
     
     TClientInfo tcl;
   };
-  MPI_Comm SplitMPIComm(MPI_Comm source, int comm_no); //<Divides workers per master
+  MPI_Comm SplitMPIComm(MPI_Comm source, Int_t comm_no); //<Divides workers per master
   void GetRootName();
   void UpdateEndProcess(); // update how many workers reached end of job
 
