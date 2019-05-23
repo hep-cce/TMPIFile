@@ -9,21 +9,10 @@
  * For the list of contributors see $ROOTSYS/README/CREDITS.             *
  *************************************************************************/
 
-/**
-\class TMPIFile TMPIFile.cxx
-\ingroup IO <-----------------NOT YET IMPLEMENTED------------>
-*/
 #include "TClientInfo.h"
-#include "TArrayC.h"
-#include "TClass.h"
-#include "TError.h"
-#include "TKey.h"
-#include "TMPIFile.h"
-#include "TMemFile.h"
-#include "TROOT.h"
 #include "TSystem.h"
-#include "TVirtualMutex.h"
-#include <iostream>
+#include "TClass.h"
+#include "TKey.h"
 
 ClassImp(TClientInfo);
 
@@ -34,10 +23,9 @@ TClientInfo::~TClientInfo() {}
 TClientInfo::TClientInfo(const char *filename, UInt_t clientId)
     : fFile(0), fContactsCount(0), fTimeSincePrevContact(0) {
   fLocalName.Form("%s-%d-%d", filename, clientId, gSystem->GetPid());
-  //  std::cout<<" TClientInfo:: fLocalName "<<fLocalName<<std::endl;
 }
 
-void TClientInfo::Set(TFile *file) {
+void TClientInfo::SetFile(TFile *file) {
   {
     // Register the new file as coming from this client.
     if (file != fFile) {
@@ -55,6 +43,7 @@ void TClientInfo::Set(TFile *file) {
     ++fContactsCount;
   }
 }
+
 void TClientInfo::R__DeleteObject(TDirectory *dir, Bool_t withReset) {
   if (dir == 0)
     return;
@@ -85,6 +74,7 @@ void TClientInfo::R__DeleteObject(TDirectory *dir, Bool_t withReset) {
     }
   }
 }
+
 void TClientInfo::R__MigrateKey(TDirectory *destination, TDirectory *source) {
   if (destination == 0 || source == 0)
     return;
