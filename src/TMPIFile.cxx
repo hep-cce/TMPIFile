@@ -19,7 +19,6 @@
 #include <string>
 
 ClassImp(TMPIFile);
-// The constructor should be similar to TMemFile...
 
 TMPIFile::TMPIFile(const char *name, char *buffer, Long64_t size,
                    Option_t *option, Int_t split, const char *ftitle,
@@ -114,8 +113,6 @@ MPI_Comm TMPIFile::SplitMPIComm(MPI_Comm source, int comm_no) {
   return row_comm;
 }
 
-//*******************MASTERS' FUNCTIONS********************************
-
 void TMPIFile::UpdateEndProcess() { fEndProcess = fEndProcess + 1; }
 
 void TMPIFile::RunCollector(bool cache) {
@@ -131,8 +128,7 @@ void TMPIFile::RunCollector(bool cache) {
   ReceiveAndMerge(cache, row_comm, size);
 }
 
-//*******************Collector's main function*******************888
-void TMPIFile::ReceiveAndMerge(bool cache, MPI_Comm comm, int size) {
+void TMPIFile::ReceiveAndMerge(Bool_t cache, MPI_Comm comm, Int_t size) {
   this->GetRootName();
   THashTable mergers;
   int counter = 1;
@@ -193,25 +189,6 @@ void TMPIFile::ReceiveAndMerge(bool cache, MPI_Comm comm, int size) {
         exit(1);
       infile->SetCompressionSettings(this->GetCompressionSettings());
 
-      // std::string msg;
-      ////////////////////// Print debug information
-      // TTree *tree = (TTree *) infile->Get("tree");
-      // JetEvent *event = new Jetthis->GetCompressionSettings()Event;
-      // tree->SetBranchAddress("event", &event);
-      // for (int i = 0; i < tree->GetEntries(); ++i) {
-      //     tree->GetEntry(i);
-      //     msg = "Jets: ";
-      //     msg += std::to_string(event->GetNjet());
-      //     msg += "\tTracks: ";
-      //     msg += std::to_string(event->GetNtrack());
-      //     msg += "\tHitsA: ";
-      //     msg += std::to_string(event->GetNhitA());
-      //     msg += "\tHitsB: ";
-      //     msg += std::to_string(event->GetNhitB());
-      //     Info("ReceiveAndMerge()", msg.c_str());
-      // }
-      ////////////////////// End of print
-
       ParallelFileMerger *info =
           (ParallelFileMerger *)mergers.FindObject(fMPIFilename);
       if (!info) {
@@ -226,11 +203,6 @@ void TMPIFile::ReceiveAndMerge(bool cache, MPI_Comm comm, int size) {
       info->RegisterClient(client_Id, infile);
       info->Merge();
       infile = 0;
-
-      // TODO: this second merge seems not necessary
-      // TIter next(&mergers);
-      // while((info = (ParallelFileMerger*)next()))
-      // info->Merge();
 
       auto merge_end = std::chrono::high_resolution_clock::now();
 
@@ -268,14 +240,12 @@ void TMPIFile::ReceiveAndMerge(bool cache, MPI_Comm comm, int size) {
 }
 
 Bool_t TMPIFile::R__NeedInitialMerge(TDirectory *dir) {
-  // Info("R__NeedInitialMerge","start");
   if (dir == 0)
     return kFALSE;
   TIter nextkey(dir->GetListOfKeys());
   TKey *key;
   while ((key = (TKey *)nextkey())) {
     TClass *cl = TClass::GetClass(key->GetClassName());
-    // Info("R__NeedInitialMerge","classname = %s",classname);
     if (cl->InheritsFrom(TDirectory::Class())) {
       TDirectory *subdir =
           (TDirectory *)dir->GetList()->FindObject(key->GetName());
@@ -326,7 +296,6 @@ Bool_t TMPIFile::ParallelFileMerger::InitialMerge(TFile *input) {
 }
 
 Bool_t TMPIFile::ParallelFileMerger::Merge() {
-  // auto start = std::chrono::high_resolution_clock::now();
   tcl.R__DeleteObject(
       fMerger.GetOutputFile(),
       kFALSE); // removing object that cannot be incrementally merged and will
@@ -354,10 +323,6 @@ Bool_t TMPIFile::ParallelFileMerger::Merge() {
       delete file;
     }
   }
-  // auto end = std::chrono::high_resolution_clock::now();
-  // double time = std::chrono::duration_cast<std::chrono::duration<double>>
-  // (end - start).count(); std::string msg = "Merge(): "; msg +=
-  // std::to_string(time); Info("ParallelFileMerger", msg.c_str());
   fLastMerge = TTimeStamp();
   fNClientsContact = 0;
   fClientsContact.Clear();
@@ -408,8 +373,6 @@ Bool_t TMPIFile::ParallelFileMerger::NeedMerge(Float_t clientThreshold) {
 Bool_t TMPIFile::ParallelFileMerger::NeedFinalMerge() {
   return fClientsContact.CountBits() > 0;
 }
-
-//************************************************************************//
 
 void TMPIFile::R__MigrateKey(TDirectory *destination, TDirectory *source) {
   if (destination == 0 || source == 0)
@@ -485,9 +448,7 @@ Bool_t TMPIFile::IsCollector() {
     coll = true;
   return coll;
 }
-//*************************END OF MASTERS' FUNCTIONS******************//
 
-//**************************START OF WORKER'S FUNCTIONS******************//
 void TMPIFile::CreateBufferAndSend(MPI_Comm comm) {
   int rank, size;
   this->Write();
@@ -523,8 +484,6 @@ void TMPIFile::CreateEmptyBufferAndSend(MPI_Comm comm) {
   if (sent)
     delete[] fSendBuf;
 }
-
-//*************END OF WORKER'S FUNCTIONS***************************
 
 // Synching defines the communication method between worker/collector
 void TMPIFile::Sync() {

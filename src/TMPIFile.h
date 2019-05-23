@@ -24,11 +24,11 @@
 class TMPIFile : public TMemFile {
 
 private:
-  int argc;
+  Int_t argc;
   char **argv;
   MPI_Comm row_comm;
   char fMPIFilename[1000];
-  int fColor;
+  Int_t fColor;
   Int_t fEndProcess = 0;
   MPI_Request fRequest = 0;
   char *fSendBuf = 0; // Workers' message buffer
@@ -36,38 +36,36 @@ private:
 
   struct ParallelFileMerger : public TObject {
   public:
-    // implemented from $ROOTSYS/tutorials/net/parallelMergeServer.C
     using ClientColl_t = std::vector<TClientInfo>;
+
     TString fFilename;
     TBits fClientsContact;
     UInt_t fNClientsContact;
     ClientColl_t fClients;
     TTimeStamp fLastMerge;
     TFileMerger fMerger;
-    ParallelFileMerger(const char *filename, Int_t compression_settings,
-                       Bool_t writeCache = kFALSE);
+    
+    ParallelFileMerger(const char *filename, Int_t compression_settings, Bool_t writeCache = kFALSE);
     virtual ~ParallelFileMerger();
+    
     ULong_t Hash() const;
     const char *GetName() const;
+    
     Bool_t InitialMerge(TFile *input);
     Bool_t Merge();
     Bool_t NeedMerge(Float_t clientThreshold);
     Bool_t NeedFinalMerge();
     void RegisterClient(UInt_t clientID, TFile *file);
+    
     TClientInfo tcl;
   };
-  MPI_Comm SplitMPIComm(MPI_Comm source,
-                        int comm_no); //<Divides workers per master
+  MPI_Comm SplitMPIComm(MPI_Comm source, int comm_no); //<Divides workers per master
   void GetRootName();
   void UpdateEndProcess(); // update how many workers reached end of job
 
 public:
-  TMPIFile(const char *name, char *buffer, Long64_t size = 0,
-           Option_t *option = "", Int_t split = 0, const char *ftitle = "",
-           Int_t compress = 4);
-  TMPIFile(const char *name, Option_t *option = "", Int_t split = 0,
-           const char *ftitle = "",
-           Int_t compress = 4); // no complete implementation
+  TMPIFile(const char *name, char *buffer, Long64_t size = 0, Option_t *option = "", Int_t split = 0, const char *ftitle = "", Int_t compress = 4);
+  TMPIFile(const char *name, Option_t *option = "", Int_t split = 0, const char *ftitle = "", Int_t compress = 4); // no complete implementation
   virtual ~TMPIFile();
 
   // some functions on MPI information
@@ -79,11 +77,11 @@ public:
   Int_t GetMPIGlobalSize();
 
   // Master Functions
-  void RunCollector(bool cache = false);
+  void RunCollector(Bool_t cache = false);
   void R__MigrateKey(TDirectory *destination, TDirectory *source);
   void R__DeleteObject(TDirectory *dir, Bool_t withReset);
   Bool_t R__NeedInitialMerge(TDirectory *dir);
-  void ReceiveAndMerge(bool cache = false, MPI_Comm = 0, int size = 0);
+  void ReceiveAndMerge(Bool_t cache = false, MPI_Comm = 0, Int_t size = 0);
   Bool_t IsCollector();
 
   // Worker Functions
