@@ -95,10 +95,12 @@ TMPIFile::TMPIFile(const char *name, Option_t *option, Int_t split,
     row_comm = MPI_COMM_WORLD;
   }
 }
+
 TMPIFile::~TMPIFile() {
   Close();
   fRequest = 0;
 }
+
 // Function to allocate number of Allocators
 MPI_Comm TMPIFile::SplitMPIComm(MPI_Comm source, Int_t comm_no) {
   Int_t source_rank, source_size;
@@ -275,12 +277,13 @@ TMPIFile::ParallelFileMerger::ParallelFileMerger(const char *filename,
   if (writeCache)
     new TFileCacheWrite(fMerger.GetOutputFile(), 32 * 1024 * 1024);
 }
-// And the destructor....
+
 TMPIFile::ParallelFileMerger::~ParallelFileMerger() {
   for (ClientColl_t::iterator iter = fClients.begin(); iter != fClients.end();
        ++iter)
     delete iter->GetFile();
 }
+
 ULong_t TMPIFile::ParallelFileMerger::Hash() const { return fFilename.Hash(); }
 const char *TMPIFile::ParallelFileMerger::GetName() const { return fFilename; }
 
@@ -300,7 +303,7 @@ Bool_t TMPIFile::ParallelFileMerger::Merge() {
       fMerger.GetOutputFile(),
       kFALSE); // removing object that cannot be incrementally merged and will
                // not be reset by the client code..
-  for (unsigned int f = 0; f < fClients.size(); ++f) {
+  for (UInt_t f = 0; f < fClients.size(); ++f) {
     fMerger.AddFile(fClients[f].GetFile());
   }
   Bool_t result = fMerger.PartialMerge(TFileMerger::kAllIncremental |
@@ -308,7 +311,7 @@ Bool_t TMPIFile::ParallelFileMerger::Merge() {
   // Remove any 'resetable' object (like TTree) from the input file so that they
   // will not be re-merged.  Keep only the object that always need to be
   // re-merged (Histograms).
-  for (unsigned int f = 0; f < fClients.size(); ++f) {
+  for (UInt_t f = 0; f < fClients.size(); ++f) {
     if (fClients[f].GetFile()) {
       tcl.R__DeleteObject(fClients[f].GetFile(), kTRUE);
     } else {
@@ -329,6 +332,7 @@ Bool_t TMPIFile::ParallelFileMerger::Merge() {
 
   return result;
 }
+
 void TMPIFile::ParallelFileMerger::RegisterClient(UInt_t clientID,
                                                   TFile *file) {
   // Register that a client has sent a file.
@@ -354,7 +358,7 @@ Bool_t TMPIFile::ParallelFileMerger::NeedMerge(Float_t clientThreshold) {
   // Calculate average and rms of the time between the last 2 contacts.
   Double_t sum = 0;
   Double_t sum2 = 0;
-  for (unsigned int c = 0; c < fClients.size(); ++c) {
+  for (UInt_t c = 0; c < fClients.size(); ++c) {
     sum += fClients[c].GetTimeSincePrevContact();
     sum2 +=
         fClients[c].GetTimeSincePrevContact() * fClients[c].GetTimeSincePrevContact();
@@ -443,20 +447,20 @@ void TMPIFile::R__DeleteObject(TDirectory *dir, Bool_t withReset) {
 
 Bool_t TMPIFile::IsCollector() {
   Bool_t coll = false;
-  int rank = this->GetMPILocalRank();
+  Int_t rank = this->GetMPILocalRank();
   if (rank == 0)
     coll = true;
   return coll;
 }
 
 void TMPIFile::CreateBufferAndSend(MPI_Comm comm) {
-  int rank, size;
+  Int_t rank, size;
   this->Write();
   MPI_Comm_rank(comm, &rank);
   MPI_Comm_size(comm, &size);
   if (rank == 0)
     return;
-  int count = this->GetEND();
+  Int_t count = this->GetEND();
   fSendBuf = new char[count];
   this->CopyTo(fSendBuf, count);
   MPI_Isend(fSendBuf, count, MPI_CHAR, 0, fColor, comm, &fRequest);
@@ -480,14 +484,14 @@ void TMPIFile::CreateEmptyBufferAndSend(MPI_Comm comm) {
     fRequest = 0;
     delete[] fSendBuf;
   }
-  int sent = MPI_Send(fSendBuf, 0, MPI_CHAR, 0, fColor, comm);
+  Int_t sent = MPI_Send(fSendBuf, 0, MPI_CHAR, 0, fColor, comm);
   if (sent)
     delete[] fSendBuf;
 }
 
 // Synching defines the communication method between worker/collector
 void TMPIFile::Sync() {
-  int rank, size;
+  Int_t rank, size;
   MPI_Comm_rank(row_comm, &rank);
   MPI_Comm_size(row_comm, &size);
   // check if the previous send request is accepted by master.
@@ -513,7 +517,7 @@ void TMPIFile::Sync() {
 }
 
 void TMPIFile::MPIClose() {
-  int rank, size;
+  Int_t rank, size;
   MPI_Comm_rank(row_comm, &rank);
   MPI_Comm_size(row_comm, &size);
   CreateEmptyBufferAndSend(row_comm);
@@ -526,7 +530,7 @@ void TMPIFile::MPIClose() {
 void TMPIFile::GetRootName() {
   std::string _filename = this->GetName();
 
-  long unsigned found = _filename.rfind(".root");
+  ULong_t found = _filename.rfind(".root");
   if (found != std::string::npos)
     _filename.resize(found);
   const char *_name = _filename.c_str();
@@ -534,8 +538,8 @@ void TMPIFile::GetRootName() {
 }
 
 Int_t TMPIFile::GetMPIGlobalRank() {
-  int flag;
-  int rank;
+  Int_t flag;
+  Int_t rank;
   MPI_Initialized(&flag);
   if (flag)
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
@@ -546,7 +550,7 @@ Int_t TMPIFile::GetMPIGlobalRank() {
 }
 
 Int_t TMPIFile::GetMPILocalRank() {
-  int flag, rank;
+  Int_t flag, rank;
   MPI_Initialized(&flag);
   if (flag)
     MPI_Comm_rank(row_comm, &rank);
@@ -556,7 +560,7 @@ Int_t TMPIFile::GetMPILocalRank() {
 }
 
 Int_t TMPIFile::GetMPIGlobalSize() {
-  int flag, size;
+  Int_t flag, size;
   MPI_Initialized(&flag);
   if (flag)
     MPI_Comm_size(MPI_COMM_WORLD, &size);
@@ -565,8 +569,9 @@ Int_t TMPIFile::GetMPIGlobalSize() {
   }
   return size;
 }
+
 Int_t TMPIFile::GetMPILocalSize() {
-  int flag, size;
+  Int_t flag, size;
   MPI_Initialized(&flag);
   if (flag)
     MPI_Comm_size(row_comm, &size);
@@ -576,6 +581,12 @@ Int_t TMPIFile::GetMPILocalSize() {
   return size;
 }
 
-Int_t TMPIFile::GetMPIColor() { return fColor; }
+Int_t TMPIFile::GetMPIColor()
+{
+  return fColor;
+}
 
-Int_t TMPIFile::GetSplitLevel() { return fSplitLevel; }
+Int_t TMPIFile::GetSplitLevel()
+{
+  return fSplitLevel;
+}
