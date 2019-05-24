@@ -29,6 +29,11 @@ private:
   Int_t fSplitLevel;
   Int_t fMPIColor;
 
+  Int_t fMPIGlobalRank;
+  Int_t fMPIGlobalSize;
+  Int_t fMPILocalRank;
+  Int_t fMPILocalSize;
+
   MPI_Comm sub_comm;
   MPI_Request fRequest = 0;
 
@@ -73,19 +78,18 @@ public:
   virtual ~TMPIFile();
 
   // some functions on MPI information
+  Int_t GetMPIGlobalSize() const;
   Int_t GetMPILocalSize() const;
+  Int_t GetMPIGlobalRank() const;
   Int_t GetMPILocalRank() const;
   Int_t GetMPIColor() const;
-  Int_t GetMPIGlobalRank() const;
   Int_t GetSplitLevel() const;
-  Int_t GetMPIGlobalSize() const;
 
   // Master Functions
   void RunCollector(Bool_t cache = kFALSE);
   void R__MigrateKey(TDirectory *destination, TDirectory *source);
   void R__DeleteObject(TDirectory *dir, Bool_t withReset);
   Bool_t R__NeedInitialMerge(TDirectory *dir);
-  void ReceiveAndMerge(Bool_t cache = kFALSE, Int_t size = 0);
   Bool_t IsCollector();
 
   // Worker Functions

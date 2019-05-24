@@ -85,8 +85,9 @@ void test_tmpi(int argc, char *argv[]) {
             << "] root output filename: " << mpifname << std::endl;
 
   // now we need to divide the collector and worker load from here..
-  if (newfile->IsCollector())
+  if (newfile->IsCollector()) {
     newfile->RunCollector(); // Start the Collector Function
+  }
   else {                     // Workers' part
     TTree *tree = new TTree("tree", "Event example with Jets");
     tree->SetAutoFlush(sync_rate);
