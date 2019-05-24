@@ -50,7 +50,7 @@ void TMPIFile::UpdateEndProcess()
 }
 
 void TMPIFile::RunCollector(Bool_t cache) {
-  this->GetRootName();
+  this->SetOutputName();
   THashTable mergers;
   
   Int_t client_Id = 0;
@@ -140,7 +140,7 @@ void TMPIFile::RunCollector(Bool_t cache) {
                  << "\t " << msg_received << "\t ";
       client_Id++;
     }
-    delete[] buf;
+    delete [] buf;
 
     auto while_end = std::chrono::high_resolution_clock::now();
     double while_time =
@@ -429,19 +429,22 @@ void TMPIFile::MPIClose() {
   this->Close();
 }
 
-void TMPIFile::GetRootName() {
+void TMPIFile::SetOutputName() {
   std::string _filename = this->GetName();
 
   ULong_t found = _filename.rfind(".root");
-  if (found != std::string::npos)
+  if (found != std::string::npos) {
     _filename.resize(found);
-  const char *_name = _filename.c_str();
-  sprintf(fMPIFilename, "%s_%d.root", _name, fMPIColor);
+  }
+  fMPIFilename = _filename;
+  fMPIFilename += "_";
+  fMPIFilename += fMPIColor;
+  fMPIFilename += ".root";
 }
 
 void TMPIFile::CheckSplitLevel() {
   if (fSplitLevel < 1) {
-    Error("CheckSplitLevel", "At least one collector is required");
+    Error("CheckSplitLevel", "At least one collector is required instead of %d", fSplitLevel);
     exit(1);
   }
 }

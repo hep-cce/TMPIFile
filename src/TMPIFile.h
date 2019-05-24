@@ -37,8 +37,9 @@ private:
   MPI_Comm sub_comm;
   MPI_Request fRequest = 0;
 
+  TString fMPIFilename;
+
   char **argv;
-  char fMPIFilename[1000];
   char *fSendBuf = 0; // Workers' message buffer
 
   struct ParallelFileMerger : public TObject {
@@ -67,7 +68,7 @@ private:
     TClientInfo tcl;
   };
 
-  void GetRootName();
+  void SetOutputName();
   void CheckSplitLevel();
   void SplitMPIComm();
   void UpdateEndProcess(); // update how many workers reached end of job
