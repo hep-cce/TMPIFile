@@ -41,7 +41,9 @@ TMPIFile::TMPIFile(const char *name, Option_t *option, Int_t split,
 
 TMPIFile::~TMPIFile() {
   Close();
-  fRequest = 0;
+  if (fSplitLevel > 1) {
+    MPI_Comm_free(&sub_comm);
+  }
 }
 
 void TMPIFile::UpdateEndProcess()
@@ -371,7 +373,8 @@ Bool_t TMPIFile::IsCollector() {
 
 void TMPIFile::CreateBufferAndSend() {
   if (this->IsCollector()) {
-    return;
+    SysError("CreateBufferAndSend"," should not be called by a collector");
+    exit(1);
   }
   this->Write();
   Int_t count = this->GetEND();
@@ -390,7 +393,9 @@ void TMPIFile::CreateEmptyBufferAndSend() {
     MPI_Wait(&fRequest, MPI_STATUS_IGNORE);
     auto end = std::chrono::high_resolution_clock::now();
     double time = std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count();
-    std::cout << "[" << fMPILocalRank << "] wait time: " << time << std::endl;
+    std::cout << "[" << fMPIColor << "]"
+              << "[" << fMPILocalRank << "] wait time: "
+              << time << std::endl;
     fRequest = 0;
     delete [] fSendBuf;
   }
@@ -410,13 +415,11 @@ void TMPIFile::Sync() {
     auto start = std::chrono::high_resolution_clock::now();
     MPI_Wait(&fRequest, MPI_STATUS_IGNORE);
     auto end = std::chrono::high_resolution_clock::now();
-    double time =
-        std::chrono::duration_cast<std::chrono::duration<double>>(end - start)
-            .count();
-    std::cout << "[" << fMPILocalRank << "] wait time: " << time << std::endl;
-
-    if (fRequest)
-      delete[] fSendBuf; // empty the buffer once received by master
+    double time = std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count();
+    std::cout << "[" << fMPIColor << "]"
+              << "[" << fMPILocalRank << "] wait time: "
+              << time << std::endl;
+    delete[] fSendBuf; // empty the buffer once received by master
     // Reset the frequest once accepted by master and send new buffer
     fRequest = 0;
     CreateBufferAndSend();
