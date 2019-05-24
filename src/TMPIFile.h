@@ -85,13 +85,13 @@ public:
   void R__MigrateKey(TDirectory *destination, TDirectory *source);
   void R__DeleteObject(TDirectory *dir, Bool_t withReset);
   Bool_t R__NeedInitialMerge(TDirectory *dir);
-  void ReceiveAndMerge(Bool_t cache = kFALSE, MPI_Comm = 0, Int_t size = 0);
+  void ReceiveAndMerge(Bool_t cache = kFALSE, Int_t size = 0);
   Bool_t IsCollector();
 
   // Worker Functions
-  void CreateBufferAndSend(MPI_Comm comm = 0);
+  void CreateBufferAndSend();
   // Empty Buffer to signal the end of job...
-  void CreateEmptyBufferAndSend(MPI_Comm comm = 0);
+  void CreateEmptyBufferAndSend();
   void Sync();
 
   // Finalize work and save output in disk.

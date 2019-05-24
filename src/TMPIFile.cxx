@@ -51,14 +51,13 @@ void TMPIFile::UpdateEndProcess()
 
 void TMPIFile::RunCollector(Bool_t cache) {
   // by this time, MPI should be initialized...
-  Int_t rank, size;
-  MPI_Comm_rank(sub_comm, &rank);
+  Int_t size;
   MPI_Comm_size(sub_comm, &size);
 
-  ReceiveAndMerge(cache, sub_comm, size);
+  ReceiveAndMerge(cache, size);
 }
 
-void TMPIFile::ReceiveAndMerge(Bool_t cache, MPI_Comm comm, Int_t size) {
+void TMPIFile::ReceiveAndMerge(Bool_t cache, Int_t size) {
   this->GetRootName();
   THashTable mergers;
   
@@ -76,7 +75,7 @@ void TMPIFile::ReceiveAndMerge(Bool_t cache, MPI_Comm comm, Int_t size) {
     // check if message has been received
     MPI_Status status;
     auto probe_start = std::chrono::high_resolution_clock::now();
-    MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &status);
+    MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, sub_comm, &status);
     auto probe_end = std::chrono::high_resolution_clock::now();
     double probe_time =
         std::chrono::duration_cast<std::chrono::duration<double>>(probe_end -
@@ -103,11 +102,11 @@ void TMPIFile::ReceiveAndMerge(Bool_t cache, MPI_Comm comm, Int_t size) {
     if (number_bytes == 0) {
       // empty buffer is a worker's last send request....
       this->UpdateEndProcess();
-      MPI_Recv(buf, number_bytes, MPI_CHAR, source, tag, comm,
+      MPI_Recv(buf, number_bytes, MPI_CHAR, source, tag, sub_comm,
                MPI_STATUS_IGNORE);
     } else {
 
-      MPI_Recv(buf, number_bytes, MPI_CHAR, source, tag, comm,
+      MPI_Recv(buf, number_bytes, MPI_CHAR, source, tag, sub_comm,
                MPI_STATUS_IGNORE);
 
       auto merge_start = std::chrono::high_resolution_clock::now();
@@ -379,10 +378,10 @@ Bool_t TMPIFile::IsCollector() {
   return kTRUE;
 }
 
-void TMPIFile::CreateBufferAndSend(MPI_Comm comm) {
+void TMPIFile::CreateBufferAndSend() {
   Int_t rank, size;
-  MPI_Comm_rank(comm, &rank);
-  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(sub_comm, &rank);
+  MPI_Comm_size(sub_comm, &size);
   if (rank == 0) {
     return;
   }
@@ -390,13 +389,13 @@ void TMPIFile::CreateBufferAndSend(MPI_Comm comm) {
   Int_t count = this->GetEND();
   fSendBuf = new char[count];
   this->CopyTo(fSendBuf, count);
-  MPI_Isend(fSendBuf, count, MPI_CHAR, 0, fMPIColor, comm, &fRequest);
+  MPI_Isend(fSendBuf, count, MPI_CHAR, 0, fMPIColor, sub_comm, &fRequest);
 }
 
-void TMPIFile::CreateEmptyBufferAndSend(MPI_Comm comm) {
+void TMPIFile::CreateEmptyBufferAndSend() {
   int rank, size;
-  MPI_Comm_rank(comm, &rank);
-  MPI_Comm_size(comm, &size);
+  MPI_Comm_rank(sub_comm, &rank);
+  MPI_Comm_size(sub_comm, &size);
   if (rank == 0)
     return;
 
@@ -411,7 +410,7 @@ void TMPIFile::CreateEmptyBufferAndSend(MPI_Comm comm) {
     fRequest = 0;
     delete[] fSendBuf;
   }
-  Int_t sent = MPI_Send(fSendBuf, 0, MPI_CHAR, 0, fMPIColor, comm);
+  Int_t sent = MPI_Send(fSendBuf, 0, MPI_CHAR, 0, fMPIColor, sub_comm);
   if (sent) {
     delete [] fSendBuf;
   }
@@ -419,12 +418,11 @@ void TMPIFile::CreateEmptyBufferAndSend(MPI_Comm comm) {
 
 // Synching defines the communication method between worker/collector
 void TMPIFile::Sync() {
-  Int_t rank, size;
+  Int_t rank;
   MPI_Comm_rank(sub_comm, &rank);
-  MPI_Comm_size(sub_comm, &size);
   // check if the previous send request is accepted by master.
   if (!fRequest) { // if accpeted create and send current batch
-    CreateBufferAndSend(sub_comm);
+    CreateBufferAndSend();
   } else {
     // if not accepted wait until received by master
     auto start = std::chrono::high_resolution_clock::now();
@@ -439,19 +437,13 @@ void TMPIFile::Sync() {
       delete[] fSendBuf; // empty the buffer once received by master
     // Reset the frequest once accepted by master and send new buffer
     fRequest = 0;
-    CreateBufferAndSend(sub_comm);
+    CreateBufferAndSend();
   }
   this->ResetAfterMerge((TFileMergeInfo *)0);
 }
 
 void TMPIFile::MPIClose() {
-  Int_t rank, size;
-  MPI_Comm_rank(sub_comm, &rank);
-  MPI_Comm_size(sub_comm, &size);
-  CreateEmptyBufferAndSend(sub_comm);
-  // workers need to wait other workers to reach the end of job.....
-  // MPI_Barrier(sub_comm); //maybe we dont need barrier
-  // okay once they reach the buffer...just close it.
+  CreateEmptyBufferAndSend();
   this->Close();
 }
 
@@ -485,7 +477,7 @@ void TMPIFile::SplitMPIComm() {
   MPI_Comm_rank(MPI_COMM_WORLD, &global_rank);
 
   if (MIN_FILE_NUM * fSplitLevel > global_size) {
-    Error("TMPIFile", " Number of Output File is larger than number of Processors Allocated. Number of processors should be two times larger than outpts. For %d outputs at least %d should be allocated instead of %d\n.", fSplitLevel, MIN_FILE_NUM * fSplitLevel, global_size);
+    Error("TMPIFile", " Number of Output File is larger than number of Processors Allocated. Number of processors should be two times larger than outpts. For %d outputs at least %d should be allocated instead of %d", fSplitLevel, MIN_FILE_NUM * fSplitLevel, global_size);
     exit(1);
   }
 
