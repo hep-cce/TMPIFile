@@ -27,9 +27,9 @@ private:
   Int_t argc;
   Int_t fEndProcess = 0;
   Int_t fSplitLevel;
-  Int_t fColor;
+  Int_t fMPIColor;
 
-  MPI_Comm row_comm;
+  MPI_Comm sub_comm;
   MPI_Request fRequest = 0;
 
   char **argv;
@@ -62,14 +62,14 @@ private:
     TClientInfo tcl;
   };
 
-  MPI_Comm SplitMPIComm(Int_t num_comm); //<Divides workers per master
-  
   void GetRootName();
+  void CheckSplitLevel();
+  void SplitMPIComm();
   void UpdateEndProcess(); // update how many workers reached end of job
 
 public:
-  TMPIFile(const char *name, char *buffer, Long64_t size = 0, Option_t *option = "", Int_t split = 0, const char *ftitle = "", Int_t compress = 4);
-  TMPIFile(const char *name, Option_t *option = "", Int_t split = 0, const char *ftitle = "", Int_t compress = 4); // no complete implementation
+  TMPIFile(const char *name, char *buffer, Long64_t size = 0, Option_t *option = "", Int_t split = 1, const char *ftitle = "", Int_t compress = 4);
+  TMPIFile(const char *name, Option_t *option = "", Int_t split = 1, const char *ftitle = "", Int_t compress = 4); // no complete implementation
   virtual ~TMPIFile();
 
   // some functions on MPI information
