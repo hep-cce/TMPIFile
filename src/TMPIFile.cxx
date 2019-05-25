@@ -20,132 +20,56 @@
 
 ClassImp(TMPIFile);
 
+const Int_t MIN_FILE_NUM = 2;
+
 TMPIFile::TMPIFile(const char *name, char *buffer, Long64_t size,
                    Option_t *option, Int_t split, const char *ftitle,
                    Int_t compress)
-    : TMemFile(name, buffer, size, option, ftitle, compress), fSplitLevel(split), fColor(0), fRequest(0), fSendBuf(0) {
-
-  // Initialize MPI if it is not already initialized...
-  Int_t flag;
-  MPI_Initialized(&flag);
-  if (!flag)
-    MPI_Init(&argc, &argv);
-  Int_t global_size, global_rank;
-
-  MPI_Comm_size(MPI_COMM_WORLD, &global_size);
-  MPI_Comm_rank(MPI_COMM_WORLD, &global_rank);
-  if (split != 0) {
-    if (2 * split > global_size) {
-      SysError("TMPIFile",
-               " Number of Output File is larger than number of Processors "
-               "Allocated. Number of processors should be two times larger "
-               "than outpts. For %d outputs at least %d should be allocated "
-               "instead of %d\n.",
-               split, 2 * split, global_size);
-      exit(1);
-    }
-    Int_t tot = global_size / split;
-    if (global_size % split != 0) {
-      tot = tot + 1;
-      fColor = global_rank / tot;
-      row_comm = SplitMPIComm(MPI_COMM_WORLD, tot);
-    } else {
-      fColor = global_rank / tot;
-      row_comm = SplitMPIComm(MPI_COMM_WORLD, tot);
-    }
-  } else {
-    fColor = 0;
-    row_comm = MPI_COMM_WORLD;
-  }
+    : TMemFile(name, buffer, size, option, ftitle, compress), fSplitLevel(split), fMPIColor(0), fRequest(0), fSendBuf(0)
+{
+  CheckSplitLevel();
+  SplitMPIComm();
 }
 
 TMPIFile::TMPIFile(const char *name, Option_t *option, Int_t split,
                    const char *ftitle, Int_t compress)
-    : TMemFile(name, option, ftitle, compress), fSplitLevel(split), fColor(0), fRequest(0), fSendBuf(0) {
-  Int_t flag;
-  MPI_Initialized(&flag);
-  if (!flag)
-    MPI_Init(&argc, &argv);
-  Int_t global_size, global_rank;
-  MPI_Comm_size(MPI_COMM_WORLD, &global_size);
-  MPI_Comm_rank(MPI_COMM_WORLD, &global_rank);
-  if (split != 0) {
-    if (2 * split > global_size) {
-      SysError("TMPIFile",
-               " Number of Output File is larger than number of Processors "
-               "Allocated. Number of processors should be two times larger "
-               "than outpts. For %d outputs at least %d should be allocated "
-               "instead of %d\n.",
-               split, 2 * split, global_size);
-      exit(1);
-    }
-    Int_t tot = global_size / split;
-    if (global_size % split != 0) {
-      tot = tot + 1;
-      fColor = global_rank / tot;
-      row_comm = SplitMPIComm(MPI_COMM_WORLD, tot);
-    } else {
-      fColor = global_rank / tot;
-      row_comm = SplitMPIComm(MPI_COMM_WORLD, tot);
-    }
-  } else {
-    fColor = 0;
-    row_comm = MPI_COMM_WORLD;
-  }
+    : TMemFile(name, option, ftitle, compress), fSplitLevel(split), fMPIColor(0), fRequest(0), fSendBuf(0)
+{
+  CheckSplitLevel();
+  SplitMPIComm();
 }
 
 TMPIFile::~TMPIFile() {
   Close();
-  fRequest = 0;
-}
-
-// Function to allocate number of Allocators
-MPI_Comm TMPIFile::SplitMPIComm(MPI_Comm source, Int_t comm_no) {
-  Int_t source_rank, source_size;
-  MPI_Comm_rank(source, &source_rank);
-  MPI_Comm_size(source, &source_size);
-  if (comm_no > source_size) {
-    SysError("TMPIFile", "number of sub communicators larger than mother size");
-    exit(1);
+  if (fSplitLevel > 1) {
+    MPI_Comm_free(&sub_comm);
   }
-  Int_t color = source_rank / comm_no;
-  MPI_Comm_split(source, color, source_rank, &row_comm);
-  return row_comm;
 }
 
-void TMPIFile::UpdateEndProcess() { fEndProcess = fEndProcess + 1; }
+void TMPIFile::UpdateEndProcess()
+{
+  fEndProcess++;
+}
 
 void TMPIFile::RunCollector(Bool_t cache) {
-  // by this time, MPI should be initialized...
-  Int_t rank, size;
-  MPI_Comm_rank(row_comm, &rank);
-  MPI_Comm_size(row_comm, &size);
-
-  std::string msg = "RunCollector PID: ";
-  msg += std::to_string(getpid());
-  // Info("Collector", msg.c_str());
-
-  ReceiveAndMerge(cache, row_comm, size);
-}
-
-void TMPIFile::ReceiveAndMerge(Bool_t cache, MPI_Comm comm, Int_t size) {
-  this->GetRootName();
+  this->SetOutputName();
   THashTable mergers;
-  Int_t counter = 1;
-
+  
+  Int_t client_Id = 0;
   Int_t msg_received = 0;
+  
   auto run_start = std::chrono::high_resolution_clock::now();
 
   std::cout << "CCT run time\t probe time\t merge time\t buffer size (MB)\t "
                "megabytes per second\t messages per second\t merge counter\t "
                "while time\n";
 
-  while (fEndProcess != size - 1) {
+  while (fEndProcess != fMPILocalSize - 1) {
 
     // check if message has been received
     MPI_Status status;
     auto probe_start = std::chrono::high_resolution_clock::now();
-    MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, comm, &status);
+    MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, sub_comm, &status);
     auto probe_end = std::chrono::high_resolution_clock::now();
     double probe_time =
         std::chrono::duration_cast<std::chrono::duration<double>>(probe_end -
@@ -172,28 +96,25 @@ void TMPIFile::ReceiveAndMerge(Bool_t cache, MPI_Comm comm, Int_t size) {
     if (number_bytes == 0) {
       // empty buffer is a worker's last send request....
       this->UpdateEndProcess();
-      MPI_Recv(buf, number_bytes, MPI_CHAR, source, tag, comm,
+      MPI_Recv(buf, number_bytes, MPI_CHAR, source, tag, sub_comm,
                MPI_STATUS_IGNORE);
     } else {
 
-      MPI_Recv(buf, number_bytes, MPI_CHAR, source, tag, comm,
+      MPI_Recv(buf, number_bytes, MPI_CHAR, source, tag, sub_comm,
                MPI_STATUS_IGNORE);
 
       auto merge_start = std::chrono::high_resolution_clock::now();
       msg_received++;
 
-      Int_t client_Id = counter - 1;
-      TMemFile *infile =
-          new TMemFile(fMPIFilename, buf, number_bytes, "UPDATE");
-      if (infile->IsZombie())
+      TMemFile *infile = new TMemFile(fMPIFilename, buf, number_bytes, "UPDATE");
+      if (infile->IsZombie()) {
         exit(1);
+      }
       infile->SetCompressionSettings(this->GetCompressionSettings());
 
-      ParallelFileMerger *info =
-          (ParallelFileMerger *)mergers.FindObject(fMPIFilename);
+      ParallelFileMerger *info = (ParallelFileMerger *)mergers.FindObject(fMPIFilename);
       if (!info) {
-        info = new ParallelFileMerger(fMPIFilename,
-                                      this->GetCompressionSettings(), cache);
+        info = new ParallelFileMerger(fMPIFilename, this->GetCompressionSettings(), cache);
         mergers.Add(info);
       }
       if (R__NeedInitialMerge(infile)) {
@@ -219,9 +140,9 @@ void TMPIFile::ReceiveAndMerge(Bool_t cache, MPI_Comm comm, Int_t size) {
                  << (float(number_bytes) / 1024. / 1024.) << "\t "
                  << megabytes_per_second << "\t " << messages_per_second
                  << "\t " << msg_received << "\t ";
-      counter = counter + 1;
+      client_Id++;
     }
-    delete[] buf;
+    delete [] buf;
 
     auto while_end = std::chrono::high_resolution_clock::now();
     double while_time =
@@ -233,7 +154,7 @@ void TMPIFile::ReceiveAndMerge(Bool_t cache, MPI_Comm comm, Int_t size) {
       std::cout << timing_msg.str();
   }
 
-  if (fEndProcess == size - 1) {
+  if (fEndProcess == fMPILocalSize - 1) {
     mergers.Delete();
     return;
   }
@@ -354,8 +275,8 @@ Bool_t TMPIFile::ParallelFileMerger::NeedMerge(Float_t clientThreshold) {
   }
 
   // Calculate average and rms of the time between the last 2 contacts.
-  Double_t sum = 0;
-  Double_t sum2 = 0;
+  Double_t sum = 0.;
+  Double_t sum2 = 0.;
   for (UInt_t c = 0; c < fClients.size(); ++c) {
     sum += fClients[c].GetTimeSincePrevContact();
     sum2 +=
@@ -444,147 +365,149 @@ void TMPIFile::R__DeleteObject(TDirectory *dir, Bool_t withReset) {
 }
 
 Bool_t TMPIFile::IsCollector() {
-  Bool_t coll = false;
-  Int_t rank = this->GetMPILocalRank();
-  if (rank == 0)
-    coll = true;
-  return coll;
+  if (this->fMPILocalRank) {
+    return kFALSE;
+  }
+  return kTRUE;
 }
 
-void TMPIFile::CreateBufferAndSend(MPI_Comm comm) {
-  Int_t rank, size;
+void TMPIFile::CreateBufferAndSend() {
+  if (this->IsCollector()) {
+    SysError("CreateBufferAndSend"," should not be called by a collector");
+    exit(1);
+  }
   this->Write();
-  MPI_Comm_rank(comm, &rank);
-  MPI_Comm_size(comm, &size);
-  if (rank == 0)
-    return;
   Int_t count = this->GetEND();
   fSendBuf = new char[count];
   this->CopyTo(fSendBuf, count);
-  MPI_Isend(fSendBuf, count, MPI_CHAR, 0, fColor, comm, &fRequest);
+  MPI_Isend(fSendBuf, count, MPI_CHAR, 0, fMPIColor, sub_comm, &fRequest);
 }
 
-void TMPIFile::CreateEmptyBufferAndSend(MPI_Comm comm) {
-  int rank, size;
-  MPI_Comm_rank(comm, &rank);
-  MPI_Comm_size(comm, &size);
-  if (rank == 0)
+void TMPIFile::CreateEmptyBufferAndSend() {
+  if (this->IsCollector()) {
     return;
+  }
 
   if (fRequest) {
     auto start = std::chrono::high_resolution_clock::now();
     MPI_Wait(&fRequest, MPI_STATUS_IGNORE);
     auto end = std::chrono::high_resolution_clock::now();
-    double time =
-        std::chrono::duration_cast<std::chrono::duration<double>>(end - start)
-            .count();
-    std::cout << "[" << rank << "] wait time: " << time << std::endl;
+    double time = std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count();
+    std::cout << "[" << fMPIColor << "]"
+              << "[" << fMPILocalRank << "] wait time: "
+              << time << std::endl;
     fRequest = 0;
-    delete[] fSendBuf;
+    delete [] fSendBuf;
   }
-  Int_t sent = MPI_Send(fSendBuf, 0, MPI_CHAR, 0, fColor, comm);
-  if (sent)
-    delete[] fSendBuf;
+  Int_t sent = MPI_Send(fSendBuf, 0, MPI_CHAR, 0, fMPIColor, sub_comm);
+  if (sent) {
+    delete [] fSendBuf;
+  }
 }
 
 // Synching defines the communication method between worker/collector
 void TMPIFile::Sync() {
-  Int_t rank, size;
-  MPI_Comm_rank(row_comm, &rank);
-  MPI_Comm_size(row_comm, &size);
   // check if the previous send request is accepted by master.
   if (!fRequest) { // if accpeted create and send current batch
-    CreateBufferAndSend(row_comm);
+    CreateBufferAndSend();
   } else {
     // if not accepted wait until received by master
     auto start = std::chrono::high_resolution_clock::now();
     MPI_Wait(&fRequest, MPI_STATUS_IGNORE);
     auto end = std::chrono::high_resolution_clock::now();
-    double time =
-        std::chrono::duration_cast<std::chrono::duration<double>>(end - start)
-            .count();
-    std::cout << "[" << rank << "] wait time: " << time << std::endl;
-
-    if (fRequest)
-      delete[] fSendBuf; // empty the buffer once received by master
+    double time = std::chrono::duration_cast<std::chrono::duration<double>>(end - start).count();
+    std::cout << "[" << fMPIColor << "]"
+              << "[" << fMPILocalRank << "] wait time: "
+              << time << std::endl;
+    delete[] fSendBuf; // empty the buffer once received by master
     // Reset the frequest once accepted by master and send new buffer
     fRequest = 0;
-    CreateBufferAndSend(row_comm);
+    CreateBufferAndSend();
   }
   this->ResetAfterMerge((TFileMergeInfo *)0);
 }
 
 void TMPIFile::MPIClose() {
-  Int_t rank, size;
-  MPI_Comm_rank(row_comm, &rank);
-  MPI_Comm_size(row_comm, &size);
-  CreateEmptyBufferAndSend(row_comm);
-  // workers need to wait other workers to reach the end of job.....
-  // MPI_Barrier(row_comm); //maybe we dont need barrier
-  // okay once they reach the buffer...just close it.
+  CreateEmptyBufferAndSend();
   this->Close();
 }
 
-void TMPIFile::GetRootName() {
+void TMPIFile::SetOutputName() {
   std::string _filename = this->GetName();
 
   ULong_t found = _filename.rfind(".root");
-  if (found != std::string::npos)
+  if (found != std::string::npos) {
     _filename.resize(found);
-  const char *_name = _filename.c_str();
-  sprintf(fMPIFilename, "%s_%d.root", _name, fColor);
+  }
+  fMPIFilename = _filename;
+  fMPIFilename += "_";
+  fMPIFilename += fMPIColor;
+  fMPIFilename += ".root";
 }
 
-Int_t TMPIFile::GetMPIGlobalRank() {
+void TMPIFile::CheckSplitLevel() {
+  if (fSplitLevel < 1) {
+    Error("CheckSplitLevel", "At least one collector is required instead of %d", fSplitLevel);
+    exit(1);
+  }
+}
+
+void TMPIFile::SplitMPIComm() {
+  // Initialize MPI if it is not already initialized...
   Int_t flag;
-  Int_t rank;
   MPI_Initialized(&flag);
-  if (flag)
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-  else {
-    rank = -9999;
+  if (!flag) {
+    MPI_Init(&argc, &argv);
   }
-  return rank;
-}
 
-Int_t TMPIFile::GetMPILocalRank() {
-  Int_t flag, rank;
-  MPI_Initialized(&flag);
-  if (flag)
-    MPI_Comm_rank(row_comm, &rank);
-  else
-    (rank = -9999);
-  return rank;
-}
+  MPI_Comm_size(MPI_COMM_WORLD, &fMPIGlobalSize);
+  MPI_Comm_rank(MPI_COMM_WORLD, &fMPIGlobalRank);
 
-Int_t TMPIFile::GetMPIGlobalSize() {
-  Int_t flag, size;
-  MPI_Initialized(&flag);
-  if (flag)
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-  else {
-    size = -1;
+  if (MIN_FILE_NUM * fSplitLevel > fMPIGlobalSize) {
+    Error("TMPIFile", " Number of Output File is larger than number of Processors Allocated. Number of processors should be two times larger than outpts. For %d outputs at least %d should be allocated instead of %d", fSplitLevel, MIN_FILE_NUM * fSplitLevel, fMPIGlobalSize);
+    exit(1);
   }
-  return size;
-}
 
-Int_t TMPIFile::GetMPILocalSize() {
-  Int_t flag, size;
-  MPI_Initialized(&flag);
-  if (flag)
-    MPI_Comm_size(row_comm, &size);
-  else {
-    size = -1;
+  if (fSplitLevel == 1) {
+    sub_comm = MPI_COMM_WORLD;
+  } else {
+    Int_t comm_size = fMPIGlobalSize / fSplitLevel;
+    if (fMPIGlobalSize % fSplitLevel != 0) {
+      comm_size++;
+    }
+    fMPIColor = fMPIGlobalRank / comm_size;
+    MPI_Comm_split(MPI_COMM_WORLD, fMPIColor, fMPIGlobalRank, &sub_comm);
   }
-  return size;
+  MPI_Comm_size(sub_comm, &fMPILocalSize);
+  MPI_Comm_rank(sub_comm, &fMPILocalRank);
 }
 
-Int_t TMPIFile::GetMPIColor()
+Int_t TMPIFile::GetMPIGlobalSize() const
 {
-  return fColor;
+  return fMPIGlobalSize;
 }
 
-Int_t TMPIFile::GetSplitLevel()
+Int_t TMPIFile::GetMPILocalSize() const
+{
+  return fMPILocalSize;
+}
+
+Int_t TMPIFile::GetMPIGlobalRank() const
+{
+  return fMPIGlobalRank;
+}
+
+Int_t TMPIFile::GetMPILocalRank() const
+{
+  return fMPILocalRank;
+}
+
+Int_t TMPIFile::GetMPIColor() const
+{
+  return fMPIColor;
+}
+
+Int_t TMPIFile::GetSplitLevel() const
 {
   return fSplitLevel;
 }
